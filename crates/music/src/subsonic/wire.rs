@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use opensubsonic::data::{AlbumId3, ArtistId3, Child, RecordLabel};
+use opensubsonic::data::{AlbumId3, ArtistId3, Child, ItemGenre, RecordLabel};
 
 use crate::{
     Album, ArtistRef, Playlist, ReleaseType, SavedArtist, Track, UserProfile, iso_8601_to_epoch,
@@ -26,14 +26,32 @@ pub fn track(song: Child, cover: Option<String>) -> Track {
         added_at: iso_8601_to_epoch(song.created.as_deref()),
         added_by: None,
         playcount: song.play_count.map(|count| count as u64),
+        rating: song
+            .user_rating
+            .filter(|rate| (1..=5).contains(rate))
+            .map(|rate| rate as u8),
         popularity: 0,
         explicit: song.explicit_status.as_deref() == Some("explicit"),
         track_number: song.track.unwrap_or(0).max(0) as u32,
         disc_number: song.disc_number.unwrap_or(1).max(1) as u32,
-        tags: Vec::new(),
+        tags: genres(song.genres, song.genre),
         languages: Vec::new(),
         credits: Vec::new(),
     }
+}
+
+/// The song's genres: the OpenSubsonic list where the server sends one, else the single
+/// `genre` field every Subsonic server has. Blank names are dropped.
+fn genres(many: Option<Vec<ItemGenre>>, one: Option<String>) -> Vec<String> {
+    let names = match many.filter(|list| !list.is_empty()) {
+        Some(list) => list.into_iter().map(|genre| genre.name).collect(),
+        None => one.into_iter().collect::<Vec<_>>(),
+    };
+    names
+        .into_iter()
+        .map(|name| name.trim().to_owned())
+        .filter(|name| !name.is_empty())
+        .collect()
 }
 
 pub fn album(source: AlbumId3, cover: Option<String>, cover_large: Option<String>) -> Album {

@@ -133,6 +133,7 @@ impl Store {
                     added_at: Some(played_at / 1_000),
                     added_by: None,
                     playcount: None,
+                    rating: None,
                     popularity: 0,
                     explicit: row.get(10)?,
                     track_number: 0,

@@ -22,8 +22,8 @@ use music::scrobble::{Link, Secret};
 use music::{AccountChoice, SignIn, SignInPrompt, WritingSystem};
 use router::{Destination, NavEntry, Screen, SettingsTab, navigate};
 use state::{
-    AppSettings, CdmState, DiscordName, Drm, Failure, FullscreenControlsAutohide, Io, Playback,
-    SYSTEM_FONT, Scan, ScrobbleState, Scrobbling, Session, SessionState, Sleep, Sonora,
+    AppSettings, CdmState, CloseAction, DiscordName, Drm, Failure, FullscreenControlsAutohide, Io,
+    Playback, SYSTEM_FONT, Scan, ScrobbleState, Scrobbling, Session, SessionState, Sleep, Sonora,
 };
 use ui::{ActiveTheme as _, Deck, LEADING, Scrollbar, Scroller, eyebrow, snapped};
 use ui::{
@@ -70,6 +70,9 @@ const DISCORD_BUTTONS: &str = "discord-buttons";
 const MOTION: &str = "motion";
 const PACE: &str = "pace";
 const SAVER: &str = "saver";
+const ON_CLOSE: &str = "on-close";
+/// Whether there is a Dock to keep the app in, which turns the tray switch into a picker.
+const DOCK: bool = cfg!(target_os = "macos");
 const SLEEP: &str = "sleep";
 const EQUALIZER_PRESETS: &str = "equalizer-presets";
 // the step a dragged band snaps to, in decibels
@@ -665,10 +668,13 @@ impl SettingsView {
             Slot::Startup => (t!("settings-startup"), t!("settings-startup-detail")),
             Slot::Entries => (t!("settings-entries"), t!("settings-entries-detail")),
             Slot::Language => (t!("settings-language"), t!("settings-language-detail")),
-            Slot::Tray => (
-                t!("settings-close-to-tray"),
-                t!("settings-close-to-tray-detail"),
-            ),
+            Slot::Tray => match DOCK {
+                true => (t!("settings-on-close"), t!("settings-on-close-detail")),
+                false => (
+                    t!("settings-close-to-tray"),
+                    t!("settings-close-to-tray-detail"),
+                ),
+            },
             Slot::TrayIcon => (t!("settings-tray-icon"), t!("settings-tray-icon-detail")),
             Slot::Accounts => {
                 let detail = t!("settings-accounts-detail");
@@ -930,7 +936,10 @@ impl SettingsView {
             Slot::Startup => self.startup_row(cx).element,
             Slot::Entries => self.entries_row(cx).element,
             Slot::Language => self.language_row(cx).element,
-            Slot::Tray => self.tray_row(cx).element,
+            Slot::Tray => match DOCK {
+                true => self.close_action_row(cx).element,
+                false => self.tray_row(cx).element,
+            },
             Slot::TrayIcon => self.tray_icon_row(cx).element,
             Slot::Accounts => self.accounts_row(cx).element,
             Slot::LocalFolder => self.local_folder_row(cx).element,
@@ -2149,11 +2158,39 @@ impl SettingsView {
         )
     }
 
+    /// macOS: what closing the window does, the Dock, the menu bar or quitting, in one picker.
+    fn close_action_row(&self, cx: &mut Context<Self>) -> Setting {
+        let theme = *cx.theme();
+        let muted = theme.muted_foreground;
+        let small = theme.text(Text::Small);
+        let chosen = self.settings.read(cx).close_action();
+
+        let picker = Picker::new(ON_CLOSE, &self.popovers, i18n::lookup(chosen.key(), None))
+            .width(Picker::REGULAR)
+            .items(CloseAction::ALL.map(|action| {
+                MenuItem::new(action.id(), i18n::lookup(action.key(), None))
+                    .selected(action == chosen)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.settings
+                            .update(cx, |settings, cx| settings.set_close_action(action, cx));
+                        cx.notify();
+                    }))
+            }));
+
+        self.row(
+            t!("settings-on-close"),
+            t!("settings-on-close-detail"),
+            muted,
+            small,
+            picker.into_any_element(),
+        )
+    }
+
     fn tray_row(&self, cx: &mut Context<Self>) -> Setting {
         let theme = *cx.theme();
         let muted = theme.muted_foreground;
         let small = theme.text(Text::Small);
-        let on = self.settings.read(cx).close_to_tray();
+        let on = self.settings.read(cx).close_action() == CloseAction::Tray;
 
         self.row(
             t!("settings-close-to-tray"),
@@ -2162,8 +2199,13 @@ impl SettingsView {
             small,
             Switch::new("close-to-tray", on)
                 .on_click(cx.listener(move |this, _, _, cx| {
-                    this.settings
-                        .update(cx, |settings, cx| settings.set_close_to_tray(!on, cx));
+                    this.settings.update(cx, |settings, cx| {
+                        let action = match on {
+                            true => CloseAction::Quit,
+                            false => CloseAction::Tray,
+                        };
+                        settings.set_close_action(action, cx)
+                    });
                 }))
                 .into_any_element(),
         )

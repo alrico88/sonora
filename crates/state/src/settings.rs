@@ -124,6 +124,35 @@ impl FullscreenControlsAutohide {
     }
 }
 
+/// What closing the last window does. `Dock` is macOS only, where the app can live on in the
+/// Dock with no window; `Tray` keeps it running behind the tray or menu bar icon.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CloseAction {
+    Dock,
+    Tray,
+    Quit,
+}
+
+impl CloseAction {
+    pub const ALL: [Self; 3] = [Self::Dock, Self::Tray, Self::Quit];
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Dock => "dock",
+            Self::Tray => "tray",
+            Self::Quit => "quit",
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Dock => "settings-on-close-dock",
+            Self::Tray => "settings-on-close-menu-bar",
+            Self::Quit => "settings-on-close-quit",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SideTab {
@@ -302,6 +331,9 @@ struct Values {
     adaptive_menu: bool,
     check_updates: bool,
     close_to_tray: bool,
+    /// macOS: closing the window keeps Sonora running with its Dock icon, so a click on the
+    /// icon brings it back, rather than quitting or hiding to the menu bar.
+    close_to_dock: bool,
     tray_icon: bool,
     stay_awake: bool,
     language: String,
@@ -455,6 +487,7 @@ impl Default for Values {
             adaptive_menu: false,
             check_updates: cfg!(target_os = "windows"),
             close_to_tray: true,
+            close_to_dock: cfg!(target_os = "macos"),
             tray_icon: true,
             stay_awake: true,
             language: i18n::AUTO.to_owned(),
@@ -831,8 +864,15 @@ impl AppSettings {
         self.values.check_updates
     }
 
-    pub fn close_to_tray(&self) -> bool {
-        self.values.close_to_tray
+    /// What closing the last window does, read from the two switches it is stored as. The Dock
+    /// switch counts only on macOS.
+    pub fn close_action(&self) -> CloseAction {
+        let dock = cfg!(target_os = "macos") && self.values.close_to_dock;
+        match (dock, self.values.close_to_tray) {
+            (true, _) => CloseAction::Dock,
+            (false, true) => CloseAction::Tray,
+            (false, false) => CloseAction::Quit,
+        }
     }
 
     pub fn tray_icon(&self) -> bool {
@@ -1236,8 +1276,13 @@ impl AppSettings {
         self.schedule_save(cx);
     }
 
-    pub fn set_close_to_tray(&mut self, close_to_tray: bool, cx: &mut Context<Self>) {
-        self.values.close_to_tray = close_to_tray;
+    /// Stores `action` across the two switches. Choosing the Dock leaves the tray switch as it
+    /// was, so going back from the Dock restores the old choice.
+    pub fn set_close_action(&mut self, action: CloseAction, cx: &mut Context<Self>) {
+        self.values.close_to_dock = action == CloseAction::Dock;
+        if action != CloseAction::Dock {
+            self.values.close_to_tray = action == CloseAction::Tray;
+        }
         self.schedule_save(cx);
     }
 

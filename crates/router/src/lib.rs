@@ -14,6 +14,7 @@ pub enum LibraryTab {
     Albums,
     Playlists,
     Artists,
+    Genres,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -210,6 +211,8 @@ pub enum Destination {
     Artist(SharedString),
     User(SharedString),
     Genre(SharedString),
+    /// A genre of the library's own songs, by name, rather than one of the provider's.
+    LibraryGenre(SharedString),
     Search,
     Settings(SettingsTab),
     Fullscreen,

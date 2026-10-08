@@ -158,6 +158,7 @@ pub fn song(value: &Value) -> Option<Track> {
         added_at: moment(attributes, "dateAdded"),
         added_by: None,
         playcount: None,
+        rating: None,
         popularity: 0,
         explicit: text(attributes, "contentRating").as_deref() == Some("explicit"),
         track_number: number(attributes, "trackNumber"),

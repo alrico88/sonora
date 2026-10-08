@@ -57,6 +57,7 @@ const LIBRARY_TABS: [(&str, LibraryTab); 4] = [
     ("nav-artists", LibraryTab::Artists),
     ("nav-playlists", LibraryTab::Playlists),
 ];
+const GENRES_TAB: (&str, LibraryTab) = ("nav-genres", LibraryTab::Genres);
 
 const MIN_WIDTH: Pixels = px(160.);
 const MAX_WIDTH: Pixels = px(400.);
@@ -582,10 +583,13 @@ impl SidebarLeft {
                 .on_click(move |_, _, cx| navigate(destination.clone(), cx))
         };
 
+        // genres are counted from the library's own songs, so only a whole catalogue has them
+        let genres = Sonora::global(cx).shelf_genres.read(cx).available(cx);
         match group {
             Group::Library => Tabs::new().items(
                 LIBRARY_TABS
                     .into_iter()
+                    .chain(genres.then_some(GENRES_TAB))
                     .map(|(name, tab_id)| tab(name.into(), name, Destination::Library(tab_id))),
             ),
             Group::Local => Tabs::new().items(LIBRARY_TABS.into_iter().enumerate().map(

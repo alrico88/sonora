@@ -149,6 +149,12 @@ pub trait MusicApi: Send + Sync {
 
     async fn set_track_saved(&self, track_id: &str, saved: bool) -> Result<()>;
 
+    /// Sets the listener's own 1–5 star rating for a track, `0` clearing it. A provider that
+    /// keeps no rating of its own keeps the default and makes no request.
+    async fn set_track_rating(&self, _track_id: &str, _rating: u8) -> Result<()> {
+        anyhow::bail!("this provider does not support ratings")
+    }
+
     /// Reads what the file itself says, for a provider whose tracks are files.
     async fn track_tags(&self, _track_id: &str) -> Result<TrackTags> {
         anyhow::bail!("this provider cannot edit tags")
@@ -475,6 +481,9 @@ pub struct Capabilities {
     pub radio: bool,
     /// Tracks carry a play count worth a column of its own.
     pub playcounts: bool,
+    /// The listener can give a track a 1–5 star rating, which a column and the player bar set
+    /// through `set_track_rating`.
+    pub ratings: bool,
     /// The listener has a library apart from their favorites, which a track or an album can be
     /// put into and taken out of through `set_in_library`. Off where the library is the
     /// favorites, as on Spotify, and where it is fixed, as on a self-hosted server.
@@ -492,6 +501,7 @@ impl Capabilities {
         follow_artists: true,
         radio: true,
         playcounts: true,
+        ratings: false,
         library: false,
         pins: false,
     };
@@ -501,6 +511,7 @@ impl Capabilities {
         follow_artists: false,
         radio: false,
         playcounts: false,
+        ratings: false,
         library: false,
         pins: false,
     };

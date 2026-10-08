@@ -10,7 +10,7 @@ use gpui::{
 use gpui::{Window, div, px};
 use i18n::t;
 use input::{ToggleFullscreen, ToggleLyrics, ToggleQueue};
-use state::{AppSettings, Playback, Queue, SideTab, Sonora};
+use state::{AppSettings, Playback, Queue, Shelf, SideTab, Sonora};
 use ui::{
     Artwork, Button, ExplicitBadge, InlineLink, InlineLinks, Popup, Room, Scrollbar, Scrubber,
     ScrubberState, clock, tabular,
@@ -18,6 +18,7 @@ use ui::{
 
 use crate::chrome::SidebarRight;
 use crate::shared::menus::ItemMenu;
+use crate::shared::rating;
 use crate::shared::transport::{NOTCH, like, moved, percent, transport, volume_icon};
 
 const SEEK_MAX: f32 = 560.;
@@ -246,6 +247,15 @@ impl PlayerBar {
         let cover = track.as_ref().and_then(|track| track.cover.clone());
         let explicit = track.as_ref().is_some_and(|track| track.explicit);
         let like = like(track.clone(), cx);
+        let stars = track.as_ref().and_then(|track| {
+            let id = track.id.as_deref()?;
+            let rateable = Sonora::global(cx)
+                .session
+                .read(cx)
+                .capabilities_of(Shelf::of(id))
+                .ratings;
+            rateable.then(|| rating::stars(track, "player", cx))
+        });
 
         div()
             .flex()
@@ -319,7 +329,8 @@ impl PlayerBar {
                                 .when(explicit, |this| {
                                     this.child(div().flex_none().child(ExplicitBadge::new()))
                                 })
-                                .child(like),
+                                .child(like)
+                                .when_some(stars, |this, stars| this.child(stars)),
                         )
                         .when_some(track.clone(), |this, track| {
                             this.child(

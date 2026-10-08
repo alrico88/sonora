@@ -19,6 +19,7 @@ use ui::{
 };
 
 use crate::chrome::{TitleBar, TitleBarEvent, TitleBarOptions, Toolbar, Tooled};
+use crate::screens::library_genre::LibraryGenreView;
 use crate::screens::search::SearchView;
 use crate::screens::settings::SettingsHeader;
 use crate::shared::ambient::{self, Ambient};
@@ -49,6 +50,7 @@ struct Screens {
     genres: Entity<Genres>,
     genre: Option<Entity<GenreView>>,
     genre_detail: Option<Entity<GenreDetails>>,
+    library_genre: Option<Entity<LibraryGenreView>>,
     settings: Entity<SettingsView>,
     settings_header: Entity<SettingsHeader>,
 }
@@ -301,6 +303,7 @@ impl Root {
                 genres,
                 genre: None,
                 genre_detail: None,
+                library_genre: None,
                 settings,
                 settings_header,
             },
@@ -347,6 +350,15 @@ impl Root {
         self.screens.genre = Some(view.clone());
         self.screens.genre_detail = Some(detail.clone());
         (view, detail)
+    }
+
+    fn library_genre(&mut self, cx: &mut Context<Self>) -> Entity<LibraryGenreView> {
+        if let Some(view) = &self.screens.library_genre {
+            return view.clone();
+        }
+        let view = cx.new(|cx| LibraryGenreView::new(self.playback.clone(), cx));
+        self.screens.library_genre = Some(view.clone());
+        view
     }
 
     fn album(&mut self, cx: &mut Context<Self>) -> (Entity<DetailView>, Entity<Detail>) {
@@ -625,6 +637,11 @@ impl Root {
                 detail.update(cx, |detail, cx| detail.open(&id, cx));
                 toolbar = Some(genre.read(cx).toolbar());
                 genre.into()
+            }
+            Destination::LibraryGenre(name) => {
+                let view = self.library_genre(cx);
+                view.update(cx, |view, cx| view.open(&name, cx));
+                view.into()
             }
             Destination::Search => self.screens.search.clone().into(),
             Destination::Settings(tab) => {

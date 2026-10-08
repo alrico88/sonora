@@ -6,7 +6,15 @@ use music::Track;
 use super::TrackField;
 use crate::shared::text::{folded, holds};
 
-pub(super) fn compare(tracks: &[Track], field: TrackField, a: usize, b: usize) -> Ordering {
+/// Orders rows `a` and `b` by `field`. `rating` reads what a row's stars show, which can be
+/// newer than the rating the track was loaded with.
+pub(super) fn compare(
+    tracks: &[Track],
+    field: TrackField,
+    a: usize,
+    b: usize,
+    rating: impl Fn(&Track) -> u8,
+) -> Ordering {
     let text =
         |index: usize, pick: fn(&Track) -> &str| tracks.get(index).map(pick).unwrap_or_default();
     let folded = |pick: fn(&Track) -> &str| folded(text(a, pick), text(b, pick));
@@ -24,6 +32,7 @@ pub(super) fn compare(tracks: &[Track], field: TrackField, a: usize, b: usize) -
             .get(a)
             .and_then(|track| track.playcount)
             .cmp(&tracks.get(b).and_then(|track| track.playcount)),
+        TrackField::Rating => tracks.get(a).map(&rating).cmp(&tracks.get(b).map(&rating)),
         TrackField::Duration => tracks
             .get(a)
             .map(|track| track.duration)

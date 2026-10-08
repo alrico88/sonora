@@ -5,7 +5,7 @@ use input::{
     SignOut, SongNext, SongPrevious, TogglePlayback, ToggleRepeat, ToggleShuffle, ZoomWindow,
 };
 use router::Destination;
-use state::{Shelf, Sonora};
+use state::{CloseAction, Shelf, Sonora};
 use ui::{Copy, Cut, Paste, SelectAll};
 
 pub fn register(lingers: bool, cx: &mut App) {
@@ -20,10 +20,11 @@ pub fn register(lingers: bool, cx: &mut App) {
         if !cx.windows().is_empty() {
             return;
         }
-        let close_to_tray = Sonora::global(cx).settings.read(cx).close_to_tray();
-        match lingers && close_to_tray {
-            true => crate::dock::show(false),
-            false => cx.quit(),
+        // without a tray icon to come back through, hiding in the tray would strand the app
+        match Sonora::global(cx).settings.read(cx).close_action() {
+            CloseAction::Dock => crate::dock::show(true),
+            CloseAction::Tray if lingers => crate::dock::show(false),
+            CloseAction::Tray | CloseAction::Quit => cx.quit(),
         }
     })
     .detach();

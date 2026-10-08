@@ -138,6 +138,7 @@ fn track_from(uri: &str, track: &TrackMessage) -> Track {
         added_at: None,
         added_by: None,
         playcount: None,
+        rating: None,
         popularity: track.popularity.unwrap_or_default().clamp(0, 100) as u32,
         explicit: track.explicit.unwrap_or_default(),
         track_number: track.number.unwrap_or_default().max(0) as u32,

@@ -312,6 +312,7 @@ fn open_window(cx: &mut App) {
         scan: _,
         scrobbling: _,
         settings: _,
+        shelf_genres: _,
         updates: _,
         usage: _,
         wake: _,

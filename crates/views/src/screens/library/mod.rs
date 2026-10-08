@@ -1,5 +1,6 @@
 mod albums;
 mod artists;
+mod genres;
 mod playlists;
 
 use std::rc::Rc;
@@ -37,6 +38,7 @@ use crate::shared::tracks::{
 use crate::shared::{cards, cells, local, page, trouble};
 use albums::{AlbumField, AlbumSource};
 use artists::{ArtistField, ArtistSource};
+use genres::{GenreField, GenreSource};
 use playlists::{PlaylistField, PlaylistSource};
 
 impl From<LibraryTab> for Section {
@@ -46,6 +48,7 @@ impl From<LibraryTab> for Section {
             LibraryTab::Albums => Section::Albums,
             LibraryTab::Playlists => Section::Playlists,
             LibraryTab::Artists => Section::Artists,
+            LibraryTab::Genres => Section::Genres,
         }
     }
 }
@@ -58,6 +61,8 @@ pub enum Section {
     Albums,
     Playlists,
     Artists,
+    /// The genres the shelf's songs are tagged with. Only a `Catalog` shelf lists them.
+    Genres,
 }
 
 const PINNED: [&str; 3] = ["cover", "title", "name"];
@@ -82,7 +87,13 @@ enum DeckKey {
 }
 
 impl Section {
-    const ALL: [Self; 4] = [Self::Songs, Self::Albums, Self::Playlists, Self::Artists];
+    const ALL: [Self; 5] = [
+        Self::Songs,
+        Self::Albums,
+        Self::Playlists,
+        Self::Artists,
+        Self::Genres,
+    ];
 
     /// The settings key a section's layout is stored under. The names predate the shelves and
     /// stay so stored layouts survive.
@@ -92,17 +103,19 @@ impl Section {
             (Shelf::Streaming, Section::Albums) => "albums",
             (Shelf::Streaming, Section::Playlists) => "playlists",
             (Shelf::Streaming, Section::Artists) => "artists",
+            (Shelf::Streaming, Section::Genres) => "genres",
             (Shelf::Local, Section::Songs) => "local-songs",
             (Shelf::Local, Section::Albums) => "local-albums",
             (Shelf::Local, Section::Playlists) => "local-playlists",
             (Shelf::Local, Section::Artists) => "local-artists",
+            (Shelf::Local, Section::Genres) => "local-genres",
         }
     }
 
     fn mode(self) -> Mode {
         match self {
             Section::Songs => Mode::List,
-            Section::Albums | Section::Playlists | Section::Artists => Mode::Grid,
+            Section::Albums | Section::Playlists | Section::Artists | Section::Genres => Mode::Grid,
         }
     }
 
@@ -112,6 +125,7 @@ impl Section {
             Section::Albums => 1,
             Section::Playlists => 2,
             Section::Artists => 3,
+            Section::Genres => 4,
         }
     }
 
@@ -132,6 +146,7 @@ impl Section {
             (Shelf::Streaming, Shape::Catalog, Section::Albums) => "library-no-catalog-albums",
             (Shelf::Streaming, Shape::Catalog, Section::Artists) => "library-no-catalog-artists",
             (Shelf::Streaming, _, Section::Playlists) => "library-no-playlists",
+            (_, _, Section::Genres) => "library-no-genres",
         }
     }
 
@@ -142,6 +157,7 @@ impl Section {
             (Section::Albums, _) => "icons/disc-3.svg",
             (Section::Playlists, _) => "icons/list-music.svg",
             (Section::Artists, _) => "icons/user-round.svg",
+            (Section::Genres, _) => "icons/guitar.svg",
         }
     }
 
@@ -151,6 +167,7 @@ impl Section {
             Section::Albums => LibraryPart::Albums,
             Section::Playlists => LibraryPart::Playlists,
             Section::Artists => LibraryPart::Artists,
+            Section::Genres => LibraryPart::Tracks,
         }
     }
 }
@@ -188,7 +205,7 @@ pub struct LibraryView {
     playback: Entity<Playback>,
     playback_status: PlaybackStatus,
     section: Section,
-    views: [Mode; 4],
+    views: [Mode; 5],
     width: Pixels,
     card_columns: usize,
     card_tile: Pixels,
@@ -201,10 +218,11 @@ pub struct LibraryView {
     albums: Entity<TableState<AlbumSource>>,
     playlists: Entity<TableState<PlaylistSource>>,
     artists: Entity<TableState<ArtistSource>>,
+    genres: Entity<TableState<GenreSource>>,
     context_menu: Option<(LibraryMenu, Point<Pixels>)>,
     toolbar: Entity<Toolbar>,
     popovers: Popovers,
-    sliders: [Sliders; 4],
+    sliders: [Sliders; 5],
     me: WeakEntity<Self>,
 }
 
@@ -298,8 +316,27 @@ impl LibraryView {
             if let Some(sorting) = sorting {
                 delegate.set_sorting(sorting, cx);
             }
+            TableState::new(delegate, cx).follow(scroll.clone())
+        });
+        let shelf_genres = Sonora::global(cx).shelf_genres.clone();
+        let genres = cx.new(|cx| {
+            let source = GenreSource::shelved(shelf_genres.clone(), shelf);
+            let mut delegate =
+                TableDelegate::new(source, width, cx).with_sort(GenreField::Songs, RECENT, cx);
+            let (layout, sorting) = stored(Section::Genres, cx);
+            delegate.set_layout(layout, cx);
+            if let Some(sorting) = sorting {
+                delegate.set_sorting(sorting, cx);
+            }
             TableState::new(delegate, cx).follow(scroll)
         });
+
+        cx.observe(&shelf_genres, |this, _, cx| {
+            this.cards_dirty = true;
+            this.genres.update(cx, |table, cx| table.rebuild(cx));
+            cx.notify();
+        })
+        .detach();
 
         cx.observe(&library, |this, _, cx| {
             this.rebuild(cx);
@@ -379,6 +416,18 @@ impl LibraryView {
         })
         .detach();
 
+        cx.subscribe(&genres, |this, _, event, cx| match event {
+            TableEvent::DoubleClicked(display) | TableEvent::Activated(display) => {
+                this.open_genre(*display, cx)
+            }
+            TableEvent::Removed => {}
+            _ => {
+                this.cards_dirty = true;
+                this.persist(Section::Genres, cx);
+            }
+        })
+        .detach();
+
         let me = cx.entity();
         let toolbar = Toolbar::searchable(&me, cx);
 
@@ -404,6 +453,7 @@ impl LibraryView {
             albums,
             playlists,
             artists,
+            genres,
             context_menu: None,
             toolbar,
             popovers: Popovers::default(),
@@ -437,11 +487,18 @@ impl LibraryView {
             Section::Albums => &self.albums,
             Section::Playlists => &self.playlists,
             Section::Artists => &self.artists,
+            Section::Genres => &self.genres,
         }
     }
 
-    fn tables(&self) -> [&dyn ui::Listing; 4] {
-        [&self.songs, &self.albums, &self.playlists, &self.artists]
+    fn tables(&self) -> [&dyn ui::Listing; 5] {
+        [
+            &self.songs,
+            &self.albums,
+            &self.playlists,
+            &self.artists,
+            &self.genres,
+        ]
     }
 
     fn tracks(&self) -> &Entity<TableState<TrackSource>> {
@@ -691,6 +748,18 @@ impl LibraryView {
         navigate(Destination::Artist(artist.id.into()), cx);
     }
 
+    fn open_genre(&mut self, display: usize, cx: &mut Context<Self>) {
+        let genre = {
+            let state = self.genres.read(cx);
+            let row = state.delegate().row(display);
+            state.delegate().source().at(row, cx)
+        };
+        let Some(genre) = genre else {
+            return;
+        };
+        navigate(Destination::LibraryGenre(genre.name.into()), cx);
+    }
+
     fn drop_albums(&mut self, cx: &mut Context<Self>) {
         let rows = self.albums.read(cx).delegate().picked();
         let albums: Vec<_> = {
@@ -853,6 +922,7 @@ impl LibraryView {
                 Section::Albums => deck(&self.albums, columns, cx),
                 Section::Playlists => deck(&self.playlists, columns, cx),
                 Section::Artists => deck(&self.artists, columns, cx),
+                Section::Genres => deck(&self.genres, columns, cx),
             }
             .into();
             self.cards_dirty = false;
@@ -906,6 +976,9 @@ impl LibraryView {
                                     Section::Artists => {
                                         view.artists.read(cx).delegate().group(*display, cx)
                                     }
+                                    Section::Genres => {
+                                        view.genres.read(cx).delegate().group(*display, cx)
+                                    }
                                 };
 
                                 div()
@@ -931,6 +1004,11 @@ impl LibraryView {
                                     Section::Artists => CardGrid::new(room)
                                         .children(cards.iter().filter_map(|&(display, row)| {
                                             view.artist_card(display, row, card, cx)
+                                        }))
+                                        .into_any_element(),
+                                    Section::Genres => CardGrid::new(room)
+                                        .children(cards.iter().filter_map(|&(display, row)| {
+                                            view.genre_card(display, row, card, cx)
                                         }))
                                         .into_any_element(),
                                 };
@@ -1043,6 +1121,17 @@ impl LibraryView {
 
         Some(
             cards::artist_card(("library-artist", display), &artist, &self.playback, cx)
+                .tile(card)
+                .flat()
+                .into_any_element(),
+        )
+    }
+
+    fn genre_card(&self, display: usize, row: usize, card: Pixels, cx: &App) -> Option<AnyElement> {
+        let genre = self.genres.read(cx).delegate().source().at(row, cx)?;
+
+        Some(
+            cards::shelf_genre_card(("library-genre", display), &genre)
                 .tile(card)
                 .flat()
                 .into_any_element(),

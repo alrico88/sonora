@@ -8,7 +8,7 @@ use gpui::{App, Context, Entity, SharedString, Task};
 use music::{Album, MediaKind, MusicApi, Page, Pages, Playlist, SavedArtist, Shape, Track};
 
 use crate::snapshot::{Kind, Remembered, Snapshots};
-use crate::{Io, Network, Outcome, Session, SessionEvent, Target, Toasts, join, mosaic};
+use crate::{Io, Network, Outcome, Session, SessionEvent, Sonora, Target, Toasts, join, mosaic};
 
 const FATAL: [LibraryPart; 3] = [
     LibraryPart::Tracks,
@@ -737,6 +737,10 @@ pub struct Library {
     pending: HashMap<String, Task<()>>,
     pending_albums: HashMap<String, Task<()>>,
     pending_artists: HashMap<String, Task<()>>,
+    /// The 1–5 star ratings set this session, by track id, laid over whatever the provider
+    /// last reported. `0` is an explicit clear.
+    ratings: HashMap<String, u8>,
+    rating_pending: HashMap<String, Task<()>>,
     /// Tracks and albums on their way into or out of the provider's own library, by id.
     pending_library: HashMap<String, Task<()>>,
     contents: HashMap<String, HashSet<String>>,
@@ -782,6 +786,8 @@ impl Library {
                 this.pending_albums.clear();
                 this.pending_artists.clear();
                 this.pending_library.clear();
+                this.ratings.clear();
+                this.rating_pending.clear();
                 this.held_mut(Shelf::Streaming).clear();
                 cx.notify();
             }
@@ -814,6 +820,8 @@ impl Library {
             pending: HashMap::new(),
             pending_albums: HashMap::new(),
             pending_artists: HashMap::new(),
+            ratings: HashMap::new(),
+            rating_pending: HashMap::new(),
             pending_library: HashMap::new(),
             contents: HashMap::new(),
             hidden_local_tracks: HashSet::new(),
@@ -1188,6 +1196,74 @@ impl Library {
 
     pub fn toggle(&mut self, track: Track, cx: &mut Context<Self>) {
         self.toggle_saved(track, cx);
+    }
+
+    /// The rating a row draws: what the listener set this session, else what the provider
+    /// last reported. `0` is unrated.
+    pub fn rating_of(&self, track: &Track) -> u8 {
+        match track.id.as_deref().and_then(|id| self.ratings.get(id)) {
+            Some(&rating) => rating,
+            None => track.rating.unwrap_or(0),
+        }
+    }
+
+    pub fn rating_pending(&self, track_id: &str) -> bool {
+        self.rating_pending.contains_key(track_id)
+    }
+
+    /// Sets a track's 1–5 star rating, `0` clearing it, at once on screen and then on the
+    /// provider through `MusicApi::set_track_rating`, rolling back if the provider refuses.
+    pub fn set_rating(&mut self, track: Track, rating: u8, cx: &mut Context<Self>) {
+        let Some(id) = track.id.clone() else {
+            return;
+        };
+        if self.rating_pending.contains_key(&id) {
+            return;
+        }
+        let rating = rating.min(5);
+        if self.rating_of(&track) == rating {
+            return;
+        }
+        let Some(client) = self.session.read(cx).client_of(Shelf::of(&id)) else {
+            return;
+        };
+
+        let previous = self.ratings.get(&id).copied();
+        let reported = track.rating.unwrap_or(0);
+        self.ratings.insert(id.clone(), rating);
+        // Keep the queue's own copy in step, so the resume snapshot it writes carries the new
+        // value and the next launch shows it on the player bar.
+        let queue = Sonora::global(cx).queue.clone();
+        queue.update(cx, |queue, cx| queue.set_rating(&id, rating, cx));
+
+        let pending = id.clone();
+        let answered = id.clone();
+        let name = track.name.clone();
+        let target = Some(Target::Song(SharedString::from(id.clone())));
+        let io = self.io.clone();
+        let task = cx.spawn(async move |this, cx| {
+            let asked = io.spawn(async move { client.set_track_rating(&id, rating).await });
+            let result = join(asked).await;
+            this.update(cx, |this, cx| {
+                this.rating_pending.remove(&answered);
+                if let Err(error) = result {
+                    match previous {
+                        Some(previous) => this.ratings.insert(answered.clone(), previous),
+                        None => this.ratings.remove(&answered),
+                    };
+                    let queue = Sonora::global(cx).queue.clone();
+                    queue.update(cx, |queue, cx| {
+                        queue.set_rating(&answered, previous.unwrap_or(reported), cx)
+                    });
+                    log::warn!("library: cannot set the rating: {error:#}");
+                    Toasts::linked(Outcome::Failed, "toast-rating-failed", name, target, cx);
+                }
+                cx.notify();
+            })
+            .ok();
+        });
+        self.rating_pending.insert(pending, task);
+        cx.notify();
     }
 
     pub fn save_tracks(&mut self, tracks: Vec<Track>, saved: bool, cx: &mut Context<Self>) {

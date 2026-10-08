@@ -580,6 +580,7 @@ pub fn track_from_file(
             added_at: modified_at(path),
             added_by: None,
             playcount: None,
+            rating: None,
             popularity: 0,
             explicit: false,
             track_number,

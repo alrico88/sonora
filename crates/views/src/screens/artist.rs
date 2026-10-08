@@ -16,7 +16,8 @@ use ui::ActiveTheme as _;
 use ui::Listing as _;
 use ui::{
     Button, Card, Deck, MIN_CONTENT, Mode, Picker, Pin, PinKind, Popovers, Popup, Scrollbar,
-    Scroller, Skeleton, TableDelegate, TableEvent, TableState, Text, scrolled, snapped, table,
+    Scroller, Skeleton, TableDelegate, TableEvent, TableState, Text, Viewport, scrolled, snapped,
+    table,
 };
 
 use crate::chrome::tools;
@@ -34,6 +35,7 @@ use crate::shared::tracks::{PlaybackStatus, TrackSource, Tracks, drop_picked, pl
 use crate::shared::trouble;
 
 const SECTION: &str = "artist";
+const SONGS: &str = "artist-songs";
 const RELEASE_ROWS: usize = 2;
 const LISTED: usize = 5;
 const LISTED_MAX: usize = 10;
@@ -54,6 +56,22 @@ impl Tracks for ArtistTracks {
     }
 }
 
+/// Every song by the artist the library holds, for the full listing below the overview.
+struct ArtistSongs {
+    detail: Entity<ArtistDetail>,
+}
+
+impl Tracks for ArtistSongs {
+    fn tracks<'a>(&self, cx: &'a App) -> &'a [Track] {
+        self.detail.read(cx).songs()
+    }
+
+    /// The list comes straight from the library, so there is never a fetch to wait on.
+    fn is_loading(&self, _: &App) -> bool {
+        false
+    }
+}
+
 pub(crate) struct ArtistView {
     detail: Entity<ArtistDetail>,
     playback: Entity<Playback>,
@@ -68,6 +86,9 @@ pub(crate) struct ArtistView {
     about_bar: Entity<Scrollbar>,
     about_open: bool,
     table: Entity<TableState<TrackSource>>,
+    /// The full listing of every song the artist has, under the releases.
+    songs: Entity<TableState<TrackSource>>,
+    songs_width: Pixels,
     shown: Rc<Cell<usize>>,
     mode: Mode,
     popular: Rc<Vec<Track>>,
@@ -142,6 +163,36 @@ impl ArtistView {
             TableState::new(delegate, cx).follow(scroll)
         });
 
+        let songs_saved = settings.read(cx).table(SONGS);
+        let songs_sorting = settings.read(cx).sorting(SONGS);
+        let songs_scroll = scrollbar.read(cx).scroll().clone();
+        let songs = cx.new(|cx| {
+            let menu_scrollbar = cx.new(|_| Scrollbar::inset().watching(id));
+            let source = TrackSource::new(
+                columns,
+                ArtistSongs {
+                    detail: detail.clone(),
+                },
+                playback.clone(),
+                menu_scrollbar,
+                cx,
+            )
+            .from({
+                let detail = detail.clone();
+                move |cx: &App| {
+                    let detail = detail.read(cx);
+                    let name = detail.artist()?.name.clone();
+                    Some(Origin::artist(detail.id()?).named(name))
+                }
+            })
+            .with_liked(Sonora::global(cx).library.clone());
+            let source = source.table(cx.weak_entity());
+            let mut delegate = TableDelegate::new(source, width, cx);
+            delegate.set_layout(songs_saved, cx);
+            delegate.set_sorting(songs_sorting.flatten(), cx);
+            TableState::new(delegate, cx).follow(songs_scroll)
+        });
+
         cx.subscribe(&detail, |_, _, event, cx| {
             let state::ArtistDetailEvent::Gone(id) = event;
             if router::trail(cx).read(cx).current()
@@ -182,6 +233,7 @@ impl ArtistView {
         let library = Sonora::global(cx).library.clone();
         cx.observe(&library, |this, _, cx| {
             this.table.update(cx, |table, cx| table.refresh(cx));
+            this.songs.update(cx, |table, cx| table.refresh(cx));
             cx.notify();
         })
         .detach();
@@ -194,6 +246,7 @@ impl ArtistView {
             }
             this.playback_status = current;
             this.table.update(cx, |table, cx| table.refresh(cx));
+            this.songs.update(cx, |table, cx| table.refresh(cx));
             cx.notify();
         })
         .detach();
@@ -206,6 +259,18 @@ impl ArtistView {
             }
             TableEvent::Removed => drop_picked(&this.table, cx),
             _ => this.persist(cx),
+        })
+        .detach();
+
+        cx.subscribe(&songs, |this, _, event, cx| match event {
+            TableEvent::DoubleClicked(display) => {
+                page::play(&this.songs, &this.playback, *display, cx)
+            }
+            TableEvent::Activated(display) => {
+                page::play_or_toggle(&this.songs, &this.playback, *display, cx)
+            }
+            TableEvent::Removed => drop_picked(&this.songs, cx),
+            _ => this.persist_songs(cx),
         })
         .detach();
 
@@ -227,6 +292,8 @@ impl ArtistView {
             about_bar: cx.new(|_| Scrollbar::new(ScrollHandle::new()).watching(id)),
             about_open: false,
             table,
+            songs,
+            songs_width: MIN_CONTENT,
             shown,
             mode,
             popular_page: 0,
@@ -254,8 +321,21 @@ impl ArtistView {
         );
     }
 
+    fn persist_songs(&mut self, cx: &mut Context<Self>) {
+        page::store(
+            &self.settings.clone(),
+            &self.songs.clone(),
+            SONGS,
+            SONGS,
+            cx,
+        );
+    }
+
     fn rebuild(&mut self, cx: &mut Context<Self>) {
         self.table.update(cx, |table, cx| {
+            table.rebuild(cx);
+        });
+        self.songs.update(cx, |table, cx| {
             table.rebuild(cx);
         });
     }
@@ -971,6 +1051,7 @@ impl Render for ArtistView {
         let inset = theme.metrics.inset;
         let previous = self.width;
         page::resize(&self.table, &mut self.width, inset, window, cx);
+        page::resize(&self.songs, &mut self.songs_width, inset, window, cx);
 
         let scroll = self.scrollbar.read(cx).scroll().clone();
         self.settle_release_padding(scrolled(&scroll));
@@ -1026,27 +1107,68 @@ impl Render for ArtistView {
             weak.update(cx, |_, cx| cx.notify()).ok();
         });
         let rails = self.recommended(window, &notify, cx);
+        let mut children: Vec<AnyElement> = Vec::with_capacity(6 + rails.len());
+        children.push(
+            div()
+                .child(head)
+                .when(listed, |this| {
+                    this.child(
+                        div()
+                            .pb_3()
+                            .text_size(theme.text(Text::Title))
+                            .font_weight(FontWeight::BOLD)
+                            .child(t!("artist-popular")),
+                    )
+                })
+                .into_any_element(),
+        );
+        children.push(tracks);
+        children.push(grid.unwrap_or_else(|| div().into_any_element()));
+
+        let mut songs_index = None;
+        if !self.detail.read(cx).songs().is_empty() {
+            children.push(
+                div()
+                    .pt_6()
+                    .pb_3()
+                    .text_size(theme.text(Text::Title))
+                    .font_weight(FontWeight::BOLD)
+                    .child(t!("artist-songs"))
+                    .into_any_element(),
+            );
+            songs_index = Some(children.len());
+            children.push(
+                table(&self.songs)
+                    .rounded(theme.radius)
+                    .border_1()
+                    .border_color(theme.border)
+                    .into_any_element(),
+            );
+        }
+        children.extend(rails);
+        children.extend(about);
+        if release_padding > Pixels::ZERO {
+            children.push(div().h(release_padding).flex_none().into_any_element());
+        }
+        if let Some(index) = songs_index
+            && let Some(bounds) = scroll.bounds_for_item(index)
+        {
+            // item bounds are laid out unscrolled, so this is how far the page has scrolled
+            // past the table's top edge
+            let view = scroll.bounds();
+            let visible = view.size.height;
+            let top = scrolled(&scroll) - (bounds.origin.y - view.origin.y);
+            self.songs.update(cx, |table, _| {
+                table.set_viewport(Viewport::measured(top, visible, window))
+            });
+        }
+
         let page = Scroller::new("artist-page", &self.scrollbar)
             .px(inset)
             .pt(inset)
             .pb(inset)
             .on_scroll_wheel(cx.listener(Self::release_scroll))
-            .child(div().child(head).when(listed, |this| {
-                this.child(
-                    div()
-                        .pb_3()
-                        .text_size(theme.text(Text::Title))
-                        .font_weight(FontWeight::BOLD)
-                        .child(t!("artist-popular")),
-                )
-            }))
-            .child(tracks)
-            .children(grid)
-            .children(rails)
-            .children(about)
-            .when(release_padding > Pixels::ZERO, |this| {
-                this.child(div().h(release_padding).flex_none())
-            });
+            .children(children);
 
         div()
             .relative()

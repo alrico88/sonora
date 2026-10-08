@@ -3,7 +3,7 @@ use gpui::{App, ElementId, Entity, FontWeight, SharedString, div};
 use i18n::t;
 use music::{Album, ArtistRef, Genre, GenreItem, Playlist, ReleaseType, SavedArtist, Track};
 use router::{Destination, navigate};
-use state::{Origin, Playback};
+use state::{Origin, Playback, ShelfGenre};
 use ui::{ActiveTheme as _, Card, InlineLinks, Pinnable, Text, Theme};
 
 use crate::shared::cells;
@@ -182,6 +182,18 @@ pub(crate) fn genre_card(id: impl Into<ElementId>, genre: &Genre) -> Card {
         .fallback("icons/music.svg")
         .weight(FontWeight::SEMIBOLD)
         .press(move |_, _, cx| navigate(Destination::Genre(opened.clone()), cx))
+}
+
+/// A genre of the library's own songs, opening its page of albums and songs.
+pub(crate) fn shelf_genre_card(id: impl Into<ElementId>, genre: &ShelfGenre) -> Card {
+    let opened = SharedString::from(genre.name.clone());
+
+    Card::new(id, SharedString::from(genre.name.clone()))
+        .cover(genre.cover.clone())
+        .fallback("icons/guitar.svg")
+        .weight(FontWeight::SEMIBOLD)
+        .meta(t!("count-songs", count = genre.songs))
+        .press(move |_, _, cx| navigate(Destination::LibraryGenre(opened.clone()), cx))
 }
 
 /// Which releases a release listing keeps: everything, or one kind of release.

@@ -379,6 +379,9 @@ pub struct Playback {
     local_task: Option<Task<()>>,
     /// The pending load, held through its debounce; a newer load cancels it.
     load: Option<Task<()>>,
+    /// The one-shot read of the current track's own rating while it carries none — a restored
+    /// track the queue rebuilt from a stub, whose stars would otherwise draw empty.
+    rating_fetch: Option<Task<()>>,
     /// The collection being fetched to start or extend the queue.
     fetch: Option<Task<()>>,
     enqueue: Option<Task<()>>,
@@ -496,6 +499,7 @@ impl Playback {
             task: None,
             local_task: None,
             load: None,
+            rating_fetch: None,
             fetch: None,
             enqueue: None,
             suggest: None,
@@ -668,6 +672,50 @@ impl Playback {
                     let reason = crate::blamed(&error, cx);
                     this.failed(reason, cx);
                 }
+            })
+            .ok();
+        }));
+    }
+
+    /// A restored track rebuilt from a stub saved without a rating would draw its stars empty, so
+    /// the provider is asked once. Only on restore, and only where the provider rates tracks.
+    fn refresh_rating(&mut self, cx: &mut Context<Self>) {
+        let Some(track) = self.track.as_ref() else {
+            return;
+        };
+        if track.rating.is_some() {
+            return;
+        }
+        let Some(id) = track.id.clone() else {
+            return;
+        };
+        let session = self.session.read(cx);
+        if !session.capabilities_of(crate::Shelf::of(&id)).ratings {
+            return;
+        }
+        let Some(client) = session.client() else {
+            return;
+        };
+        let io = Io::global(cx);
+        let queue = self.queue.clone();
+        self.rating_fetch = Some(cx.spawn(async move |this, cx| {
+            let loaded = join(io.spawn(async move { client.track(&id).await })).await;
+            this.update(cx, |this, cx| {
+                let Ok(fresh) = loaded else {
+                    return;
+                };
+                let (Some(fresh_id), Some(rating)) = (fresh.id.clone(), fresh.rating) else {
+                    return;
+                };
+                let Some(current) = this.track.as_mut() else {
+                    return;
+                };
+                if current.id.as_deref() != Some(fresh_id.as_str()) {
+                    return;
+                }
+                current.rating = Some(rating);
+                queue.update(cx, |queue, cx| queue.set_rating(&fresh_id, rating, cx));
+                cx.notify();
             })
             .ok();
         }));
@@ -1720,6 +1768,7 @@ impl Playback {
         self.stored = at;
         self.resume_at = Some(at);
         self.prepare_resume(cx);
+        self.refresh_rating(cx);
     }
 
     /// Writes the position to settings for resuming, every few seconds or when `force`d.

@@ -28,6 +28,7 @@ nav-songs = Songs
 nav-albums = Albums
 nav-playlists = Playlists
 nav-artists = Artists
+nav-genres = Genres
 nav-local = Local Music
 nav-back = Back
 nav-forward = Forward
@@ -49,6 +50,7 @@ library-no-local-playlists = No local playlists yet
 library-no-catalog-songs = No songs found
 library-no-catalog-albums = No albums found
 library-no-catalog-artists = No artists found
+library-no-genres = None of your songs say what genre they are
 library-no-matches = No matches
 library-not-loaded = Your library did not load
 library-scanning = Looking through your folders…
@@ -91,10 +93,13 @@ column-added-by = Added by
 column-modified = Modified
 column-length = Length
 column-plays = Plays
+column-rating = Rating
 column-name = Name
 column-owner = Owner
 column-year = Year
 column-tracks = Tracks
+column-albums = Albums
+column-songs = Songs
 
 # track menu
 menu-add-to-playlist = Add to playlist
@@ -339,6 +344,7 @@ artist-popular-eyebrow = Explore this artist
 artist-popular-empty = Nothing to play from this artist yet
 artist-popular-more = Show all
 artist-popular-less = Show less
+artist-songs = Songs
 artist-releases = Releases
 artist-releases-more = Show all
 artist-releases-less = Show less
@@ -386,6 +392,11 @@ home-collection-albums = Albums from your collection
 search-placeholder = What do you want to listen to?
 search-browse = Browse all
 genre-empty = Nothing to show here yet
+library-genre-eyebrow = Genre
+library-genre-albums = Albums
+library-genre-albums-more = Show all
+library-genre-albums-less = Show less
+library-genre-songs = Songs
 search-best-match = Best match
 search-no-matches = No matches
 search-results = Results
@@ -458,6 +469,11 @@ count-tracks =
     { $count ->
         [one] { $count } track
        *[other] { $count } tracks
+    }
+count-albums =
+    { $count ->
+        [one] { $count } album
+       *[other] { $count } albums
     }
 
 # running times
@@ -562,6 +578,11 @@ settings-controls-side = Controls side
 settings-controls-side-detail = Which end of the title bar the controls sit on
 settings-close-to-tray = Keep running in the background
 settings-close-to-tray-detail = Keep Sonora running and playing after its window closes
+settings-on-close = When the window closes
+settings-on-close-detail = Where Sonora goes once its window is closed
+settings-on-close-dock = Stay in the Dock
+settings-on-close-menu-bar = Hide in the menu bar
+settings-on-close-quit = Quit
 settings-tray-icon = Show in the system tray
 settings-tray-icon-detail = Put an icon with playback controls in the system tray
 settings-discord = Show on Discord
@@ -819,6 +840,7 @@ toast-throttled = { $name } is limiting playback for now. Trying again in a mome
 toast-still-throttled = { $name } is still limiting playback. Press play to try again
 toast-library-add-failed = { $name } could not be added to your library
 toast-library-remove-failed = { $name } could not be removed from your library
+toast-rating-failed = { $name } could not be rated
 toast-library-added = Added to your library
 toast-library-removed = Removed from your library
 

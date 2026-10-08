@@ -257,6 +257,7 @@ fn track_from(track: PathTrack, album: &Album) -> Result<Track> {
         added_at: None,
         added_by: None,
         playcount,
+        rating: None,
         popularity: 0,
         explicit: track.content_rating.label == "EXPLICIT",
         track_number: track.track_number,

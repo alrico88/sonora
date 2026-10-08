@@ -37,7 +37,7 @@ pub use artist::{ArtistDetail, ArtistDetailEvent};
 pub use cover::Cover;
 pub use detail::{Collection, Detail, Header};
 pub use drm::{CdmState, Drm};
-pub use genre::{GenreDetails, Genres};
+pub use genre::{GenreDetails, Genres, ShelfGenre, ShelfGenres};
 pub use history::{History, HistoryState};
 pub use home::Home;
 pub use library::{
@@ -56,7 +56,7 @@ pub use scrobble::{ScrobbleRow, ScrobbleState, Scrobbling};
 pub use search::{AlbumHit, ArtistHit, Hit, Kind, PlaylistHit, Search};
 pub use session::{Failure, ProviderInfo, Session, SessionEvent, SessionState};
 pub use settings::{
-    AppSettings, DiscordName, FilterValue, FullscreenControlsAutohide, Reloaded,
+    AppSettings, CloseAction, DiscordName, FilterValue, FullscreenControlsAutohide, Reloaded,
     RomanizationScripts, SYSTEM_FONT, SideTab, remember_window, window_placement,
 };
 pub use song::SongDetail;
@@ -179,6 +179,7 @@ pub struct Sonora {
     pub scan: Entity<Scan>,
     pub scrobbling: Entity<Scrobbling>,
     pub settings: Entity<AppSettings>,
+    pub shelf_genres: Entity<ShelfGenres>,
     pub updates: Entity<Updates>,
     pub usage: Entity<Usage>,
     pub wake: Entity<Wake>,
@@ -257,6 +258,7 @@ pub fn init(
     let updates = cx.new(|cx| Updates::new(settings.clone(), io.clone(), cx));
     let usage = cx.new(|cx| Usage::new(session.clone(), database, io.clone(), cx));
     let pins = cx.new(|cx| Pins::new(settings.clone(), library.clone(), session.clone(), cx));
+    let shelf_genres = cx.new(|cx| ShelfGenres::new(library.clone(), cx));
     let potoken = potoken::attach(cx);
     let wake = cx.new(|cx| Wake::new(settings.clone(), playback.clone(), io.clone(), cx));
     discord::attach(
@@ -283,6 +285,7 @@ pub fn init(
         scan,
         scrobbling,
         settings,
+        shelf_genres,
         updates,
         usage,
         wake,

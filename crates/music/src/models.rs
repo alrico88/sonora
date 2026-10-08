@@ -67,6 +67,9 @@ pub struct Track {
     pub added_at: Option<i64>,
     pub added_by: Option<Arc<Contributor>>,
     pub playcount: Option<u64>,
+    /// The listener's own 1–5 star rating, where the provider keeps one. `None` is unrated.
+    #[serde(default)]
+    pub rating: Option<u8>,
     pub popularity: u32,
     pub explicit: bool,
     pub track_number: u32,

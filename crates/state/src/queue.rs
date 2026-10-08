@@ -48,6 +48,8 @@ pub struct Stub {
     pub(crate) cover: Option<String>,
     pub(crate) seconds: f32,
     pub(crate) explicit: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) rating: Option<u8>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -76,6 +78,7 @@ fn stub(track: &Track) -> Option<Stub> {
         cover: track.cover.clone(),
         seconds: track.duration.as_secs_f32(),
         explicit: track.explicit,
+        rating: track.rating,
     })
 }
 
@@ -100,6 +103,7 @@ fn hydrate(stub: Stub) -> Track {
         added_at: None,
         added_by: None,
         playcount: None,
+        rating: stub.rating,
         popularity: 0,
         explicit: stub.explicit,
         track_number: 0,
@@ -400,6 +404,28 @@ impl Queue {
             .collect();
         self.changed(cx);
         self.current.clone()
+    }
+
+    /// Applies a rating to every copy of `id` the queue holds, so the next snapshot restores it.
+    /// `0` clears the rating.
+    pub(crate) fn set_rating(&mut self, id: &str, rating: u8, cx: &mut Context<Self>) {
+        let rating = (rating > 0).then_some(rating);
+        let mut touched = false;
+        for track in self
+            .past
+            .iter_mut()
+            .chain(self.current.as_mut())
+            .chain(self.upcoming.iter_mut())
+            .chain(self.source.iter_mut())
+        {
+            if track.id.as_deref() == Some(id) && track.rating != rating {
+                track.rating = rating;
+                touched = true;
+            }
+        }
+        if touched {
+            self.changed(cx);
+        }
     }
 
     fn purge(&mut self, cx: &mut Context<Self>) {
@@ -810,6 +836,7 @@ mod tests {
             added_at: None,
             added_by: None,
             playcount: None,
+            rating: None,
             popularity: 0,
             explicit: false,
             track_number: 0,

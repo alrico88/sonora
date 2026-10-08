@@ -4,6 +4,7 @@ pub(crate) mod genre;
 pub(crate) mod history;
 pub(crate) mod home;
 pub(crate) mod library;
+pub(crate) mod library_genre;
 pub(crate) mod login;
 pub(crate) mod search;
 pub(crate) mod settings;

@@ -4,7 +4,7 @@ use gpui::{
 };
 use i18n::t;
 use music::Track;
-use state::{History, HistoryState, Playback};
+use state::{History, HistoryState, Playback, Sonora};
 use ui::{
     ActiveTheme as _, Button, Listing as _, Modal, Scrollbar, Scroller, TableDelegate, TableEvent,
     TableState, runtime, table, vacant,
@@ -65,6 +65,12 @@ impl HistoryView {
 
         cx.observe(&history, |this, _, cx| {
             this.table.rebuild(cx);
+            cx.notify();
+        })
+        .detach();
+        let library = Sonora::global(cx).library.clone();
+        cx.observe(&library, |this, _, cx| {
+            this.table.refresh(cx);
             cx.notify();
         })
         .detach();

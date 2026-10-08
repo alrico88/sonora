@@ -421,6 +421,13 @@ impl MusicApi for SubsonicClient {
             .with_context(|| format!("cannot change the star for {track_id}"))
     }
 
+    async fn set_track_rating(&self, track_id: &str, rating: u8) -> Result<()> {
+        self.client
+            .set_rating(track_id, i32::from(rating.min(5)))
+            .await
+            .with_context(|| format!("cannot set the rating for {track_id}"))
+    }
+
     async fn track(&self, track_id: &str) -> Result<Track> {
         let song = self
             .client

@@ -637,6 +637,7 @@ mod tests {
             added_at: None,
             added_by: None,
             playcount: None,
+            rating: None,
             popularity: 50,
             explicit: false,
             track_number: 1,

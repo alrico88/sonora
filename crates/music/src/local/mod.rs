@@ -67,6 +67,7 @@ impl LocalProvider {
                 follow_artists: true,
                 radio: false,
                 playcounts: false,
+                ratings: false,
                 library: false,
                 pins: false,
             },

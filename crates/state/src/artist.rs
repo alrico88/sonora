@@ -1,10 +1,12 @@
+use std::cmp::Reverse;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, EventEmitter, Task};
-use music::{Album, Artist, ArtistCatalogue, Track};
+use music::{Album, Artist, ArtistCatalogue, Shape, Track};
 use tokio::task::AbortHandle;
 
-use crate::{Io, Library, LibraryEvent, Session, SessionEvent, join};
+use crate::{Io, Library, LibraryEvent, Session, SessionEvent, Shelf, join};
 
 /// Signals that a local artist no longer has a page after the library changes.
 pub enum ArtistDetailEvent {
@@ -15,9 +17,12 @@ pub struct ArtistDetail {
     id: Option<String>,
     artist: Option<Arc<Artist>>,
     appears_on: Vec<Album>,
+    /// Every song by the artist the library holds, kept in step with the library.
+    songs: Vec<Track>,
     loading: bool,
     error: Option<String>,
     session: Entity<Session>,
+    library: Entity<Library>,
     io: Io,
     task: Option<Task<()>>,
     request: Option<AbortHandle>,
@@ -74,14 +79,18 @@ impl ArtistDetail {
             }
         })
         .detach();
+        cx.observe(&library, |this, _, cx| this.collect_songs(cx))
+            .detach();
 
         Self {
             id: None,
             artist: None,
             appears_on: Vec::new(),
+            songs: Vec::new(),
             loading: false,
             error: None,
             session,
+            library,
             io,
             task: None,
             request: None,
@@ -116,6 +125,11 @@ impl ArtistDetail {
     /// What the artist guests on, filled in behind the overview.
     pub fn appears_on(&self) -> &[Album] {
         &self.appears_on
+    }
+
+    /// Every song by the artist the library holds. Empty where the library is only favorites.
+    pub fn songs(&self) -> &[Track] {
+        &self.songs
     }
 
     pub fn is_loading(&self) -> bool {
@@ -209,11 +223,13 @@ impl ArtistDetail {
         let Some(artist) = self.artist.clone() else {
             return;
         };
+        self.collect_songs(cx);
         let Some(catalog) = self.session.read(cx).catalog(id) else {
             return;
         };
         if let Some(catalogue) = catalog.peek_artist_catalogue(id) {
             self.absorb(&catalogue);
+            self.collect_songs(cx);
             return;
         }
 
@@ -236,7 +252,10 @@ impl ArtistDetail {
                 this.filling = false;
                 this.filling_request = None;
                 match filled {
-                    Ok(catalogue) => this.absorb(&catalogue),
+                    Ok(catalogue) => {
+                        this.absorb(&catalogue);
+                        this.collect_songs(cx);
+                    }
                     Err(error) => log::warn!("artist: cannot fill the page: {error:#}"),
                 }
                 cx.notify();
@@ -266,6 +285,28 @@ impl ArtistDetail {
         }
     }
 
+    /// Lists every song the library holds by this artist, guest spots included, newest of the
+    /// artist's own releases first and the guest spots after them. Only a `Catalog` shelf holds
+    /// the whole catalogue; on a `Saved` one the list would be just the favorites, so it stays
+    /// empty there. Notifies only when the list changed.
+    fn collect_songs(&mut self, cx: &mut Context<Self>) {
+        let songs = match (self.id.as_deref(), self.artist.as_deref()) {
+            (Some(id), Some(artist)) => {
+                let library = self.library.read(cx);
+                let shelf = Shelf::of(id);
+                match library.shape(shelf) {
+                    Shape::Catalog => songs_by(id, &artist.albums, library.state(shelf).tracks()),
+                    Shape::Saved => Vec::new(),
+                }
+            }
+            _ => Vec::new(),
+        };
+        if songs != self.songs {
+            self.songs = songs;
+            cx.notify();
+        }
+    }
+
     fn clear(&mut self) {
         self.task = None;
         self.fill = None;
@@ -278,8 +319,50 @@ impl ArtistDetail {
         self.id = None;
         self.artist = None;
         self.appears_on.clear();
+        self.songs.clear();
         self.loading = false;
         self.filling = false;
         self.error = None;
     }
+}
+
+/// The tracks crediting `id` or sitting on one of its `albums`, ordered by the artist's own
+/// releases newest first, then the releases they only guest on by name, each in disc and
+/// track order.
+fn songs_by(id: &str, albums: &[Album], tracks: &[Track]) -> Vec<Track> {
+    let mut releases: Vec<&Album> = albums.iter().collect();
+    releases.sort_by_cached_key(|album| (Reverse(album.year), album.name.to_lowercase()));
+    let rank: HashMap<&str, usize> = releases
+        .iter()
+        .enumerate()
+        .map(|(at, album)| (album.id.as_str(), at))
+        .collect();
+
+    let mut songs: Vec<Track> = tracks
+        .iter()
+        .filter(|track| {
+            track
+                .artist_refs
+                .iter()
+                .any(|artist| artist.id.as_deref() == Some(id))
+                || track
+                    .album_id
+                    .as_deref()
+                    .is_some_and(|album| rank.contains_key(album))
+        })
+        .cloned()
+        .collect();
+    songs.sort_by_cached_key(|track| {
+        (
+            track
+                .album_id
+                .as_deref()
+                .and_then(|album| rank.get(album).copied())
+                .unwrap_or(usize::MAX),
+            track.album.to_lowercase(),
+            track.disc_number,
+            track.track_number,
+        )
+    });
+    songs
 }

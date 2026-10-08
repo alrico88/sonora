@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Rate Subsonic songs from 1 to 5 stars, either from a new Rating column in the song tables or
+  from the stars beside the like button on the player bar. Clicking the current star clears it.
+- An artist page lists every song the artist has in a table under the releases, newest release
+  first and guest appearances included, with the same sortable columns as the popular tracks.
+  It shows on servers whose whole catalogue is your library, such as Subsonic and local files.
+- Your Library has a Genres page on Subsonic, listing every genre your songs are tagged with.
+  Opening one shows its albums and all of its songs, ready to play or shuffle.
+- On macOS, one setting now picks what closing the window does: stay in the Dock, where a click
+  on the icon reopens it, hide in the menu bar, or quit. Staying in the Dock is the default.
+
 ## [0.42.1] - 2026-10-02
 
 ### Added

@@ -28,6 +28,7 @@ nav-songs = Canciones
 nav-albums = Álbumes
 nav-playlists = Listas de reproducción
 nav-artists = Artistas
+nav-genres = Géneros
 nav-local = Música local
 nav-back = Atrás
 nav-forward = Adelante
@@ -49,6 +50,7 @@ library-no-local-playlists = Todavía no tienes listas locales
 library-no-catalog-songs = No se encontraron canciones
 library-no-catalog-albums = No se encontraron álbumes
 library-no-catalog-artists = No se encontraron artistas
+library-no-genres = Ninguna de tus canciones indica su género
 library-no-matches = Sin coincidencias
 library-not-loaded = Tu biblioteca no se cargó
 library-part-not-loaded = Esta parte de tu biblioteca no se cargó
@@ -88,10 +90,13 @@ column-added-by = Añadido por
 column-modified = Modificado
 column-length = Duración
 column-plays = Reproducciones
+column-rating = Valoración
 column-name = Nombre
 column-owner = Propietario
 column-year = Año
 column-tracks = Pistas
+column-albums = Álbumes
+column-songs = Canciones
 
 # track menu
 menu-add-to-playlist = Añadir a una lista
@@ -133,6 +138,11 @@ menu-add-to-queue = Añadir a la cola
 menu-add-tracks-to-queue = { $count ->
     [one] Añadir { $count } pista a la cola
    *[other] Añadir { $count } pistas a la cola
+}
+menu-play-last = Reproducir al final
+menu-play-tracks-last = { $count ->
+    [one] Reproducir { $count } pista al final
+   *[other] Reproducir { $count } pistas al final
 }
 menu-song-radio = Ir a la radio de la canción
 menu-go-to-album = Ir al álbum
@@ -327,6 +337,7 @@ artist-popular-eyebrow = Descubre a este artista
 artist-popular-empty = Todavía no hay nada que reproducir de este artista
 artist-popular-more = Ver todo
 artist-popular-less = Ver menos
+artist-songs = Canciones
 artist-releases = Lanzamientos
 artist-releases-more = Ver todo
 artist-releases-less = Ver menos
@@ -364,6 +375,11 @@ home-quick-picks-empty = Marca algunas canciones como favoritas y aparecerán aq
 search-placeholder = ¿Qué quieres escuchar?
 search-browse = Explorar todo
 genre-empty = Todavía no hay nada que mostrar aquí
+library-genre-eyebrow = Género
+library-genre-albums = Álbumes
+library-genre-albums-more = Ver todo
+library-genre-albums-less = Ver menos
+library-genre-songs = Canciones
 search-best-match = Mejor coincidencia
 search-no-matches = Sin coincidencias
 search-results = Resultados
@@ -436,6 +452,11 @@ count-tracks =
     { $count ->
         [one] { $count } pista
        *[other] { $count } pistas
+    }
+count-albums =
+    { $count ->
+        [one] { $count } álbum
+       *[other] { $count } álbumes
     }
 
 # dates
@@ -523,6 +544,11 @@ settings-controls-side = Lado de los controles
 settings-controls-side-detail = El extremo de la barra de título donde se sitúan los controles
 settings-close-to-tray = Mantener en segundo plano
 settings-close-to-tray-detail = Mantiene a Sonora en ejecución y reproduciendo después de cerrar su ventana
+settings-on-close = Al cerrar la ventana
+settings-on-close-detail = Dónde queda Sonora cuando cierras su ventana
+settings-on-close-dock = Seguir en el Dock
+settings-on-close-menu-bar = Ocultar en la barra de menús
+settings-on-close-quit = Salir
 settings-tray-icon = Mostrar en la bandeja del sistema
 settings-tray-icon-detail = Pone un icono con controles de reproducción en la bandeja del sistema
 settings-discord = Mostrar en Discord
@@ -762,6 +788,7 @@ toast-sign-in-to-play = { $name } solo se reproduce con la sesión iniciada
 toast-track-unplayable = No se pudo reproducir { $name }
 toast-library-add-failed = No se pudo añadir { $name } a tu biblioteca
 toast-library-remove-failed = No se pudo quitar { $name } de tu biblioteca
+toast-rating-failed = No se pudo valorar { $name }
 toast-library-added = Añadido a tu biblioteca
 toast-library-removed = Quitado de tu biblioteca
 

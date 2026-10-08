@@ -11,8 +11,8 @@ use ui::{ActiveTheme as _, Filter, FilterChange, FlagAxis, RangeAxis, Unit};
 use crate::shared::menus::{ItemMenu, TrackColumns};
 use gpui::prelude::FluentBuilder as _;
 use gpui::{
-    AnyElement, App, Entity, Hsla, InteractiveElement as _, IntoElement as _, SharedString,
-    Styled as _, WeakEntity,
+    AnyElement, App, Entity, Hsla, InteractiveElement as _, IntoElement as _, ParentElement as _,
+    SharedString, Styled as _, WeakEntity,
 };
 use music::{Shape, Track};
 use router::Destination;
@@ -24,6 +24,7 @@ use ui::{
 use crate::shared::cells;
 use crate::shared::confirm::{Confirm, Kind};
 use crate::shared::pins::Pinned as _;
+use crate::shared::rating;
 
 pub(crate) use columns::{
     HISTORY_COLUMNS, LIBRARY_COLUMNS, TrackField, album_columns, artist_columns, playlist_columns,
@@ -321,6 +322,17 @@ impl TrackSource {
         }
     }
 
+    /// Whether this list's provider rates tracks, so the rating column is drawn. Read from the
+    /// first track's shelf, so a local list never borrows the streaming provider's capability.
+    fn rateable(&self, cx: &App) -> bool {
+        let session = Sonora::global(cx).session.read(cx);
+        self.provider
+            .tracks(cx)
+            .iter()
+            .find_map(|track| track.id.as_deref())
+            .is_some_and(|id| session.capabilities_of(Shelf::of(id)).ratings)
+    }
+
     pub(crate) fn with_playlist(mut self, detail: Entity<Detail>) -> Self {
         self.playlist = Some(detail);
         self
@@ -409,6 +421,14 @@ impl TrackSource {
             None,
             self.liked_button(cell, track, cx),
         )
+    }
+
+    fn rating_cell(&self, cell: &Cell<TrackField>, track: &Track, cx: &App) -> AnyElement {
+        let seed = format!("row-{}", cell.row);
+        cell.middle()
+            .justify_center()
+            .child(rating::stars(track, &seed, cx))
+            .into_any_element()
     }
 
     fn liked_button(&self, cell: &Cell<TrackField>, track: &Track, cx: &App) -> Option<AnyElement> {
@@ -512,6 +532,7 @@ impl TableSource for TrackSource {
             }
             TrackField::AddedBy => tracks.iter().any(|track| track.added_by.is_some()),
             TrackField::Plays => tracks.iter().any(|track| track.playcount.is_some()),
+            TrackField::Rating => self.rateable(cx),
             _ => true,
         }
     }
@@ -651,6 +672,7 @@ impl TableSource for TrackSource {
                 track.playcount.map(cells::count).unwrap_or_default(),
                 detail,
             ),
+            TrackField::Rating => self.rating_cell(&cell, track, cx),
             TrackField::Duration => cells::length(&cell, track.duration, detail),
             TrackField::Index => cells::blank(&cell),
         }
@@ -696,7 +718,10 @@ impl TableSource for TrackSource {
     }
 
     fn compare(&self, field: TrackField, a: usize, b: usize, cx: &App) -> Ordering {
-        sort::compare(self.provider.tracks(cx), field, a, b)
+        let library = Sonora::global(cx).library.read(cx);
+        sort::compare(self.provider.tracks(cx), field, a, b, |track| {
+            library.rating_of(track)
+        })
     }
 
     fn group(&self, field: TrackField, row: usize, cx: &App) -> Option<SharedString> {
@@ -724,6 +749,7 @@ mod fixture {
             added_at: None,
             added_by: None,
             playcount: None,
+            rating: None,
             popularity: 0,
             explicit,
             track_number: 0,
