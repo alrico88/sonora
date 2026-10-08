@@ -8,11 +8,8 @@ use std::rc::Rc;
 
 use i18n::t;
 use music::{Album, Playlist, ReleaseType, Track};
-use router::{Destination, navigate};
 use state::{AppSettings, Collection, Detail, LibraryEvent, Origin, Playback, Sonora};
-use ui::{
-    ActiveTheme as _, Button, InlineLink, InlineLinks, Menu, Picker, Popovers, Popup, SortAxis,
-};
+use ui::{ActiveTheme as _, Button, Menu, Picker, Popovers, Popup, SortAxis};
 use ui::{
     ColumnSpec, FilterChange, Listing as _, MIN_CONTENT, Pending, Pin, PinKind, Scrollbar,
     Scroller, TableDelegate, TableEvent, TableState, Text, Toggle, runtime, table,
@@ -383,16 +380,7 @@ impl DetailView {
             ));
         }
         if let Some(owner) = owner {
-            strip = strip.item(
-                InlineLinks::new(
-                    SharedString::new_static("detail-owner"),
-                    [InlineLink::new(owner.name.clone(), Some(owner.id.into()))],
-                    owner.name,
-                    muted,
-                )
-                .on_click(|id, cx| navigate(Destination::User(id), cx))
-                .truncate(),
-            );
+            strip = strip.text(owner.name);
         }
         if let Some(release_date) = release_date {
             strip = strip.text(release_date_label(release_date));

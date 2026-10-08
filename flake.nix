@@ -70,25 +70,11 @@
                 alsa-lib
                 dbus
                 sqlite
-                webkitgtk_4_1
-                glib-networking
               ]
             else
               [ ];
 
           asset = release.assets.${pkgs.stdenv.hostPlatform.system};
-
-          # WebKit plays a page's media through GStreamer and aborts its web process when no
-          # audio sink element exists. The Nix webkitgtk closure carries only core and base, and
-          # autoaudiosink lives in good, so the plugin path has to name all three.
-          gstPluginPath = pkgs.lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (
-            with pkgs.gst_all_1;
-            [
-              gstreamer
-              gst-plugins-base
-              gst-plugins-good
-            ]
-          );
 
           alsaPluginDirectory = pkgs.symlinkJoin {
             name = "sonora-alsa-plugins";
@@ -283,9 +269,7 @@
                 --add-rpath "${lib.makeLibraryPath (runtimeLibraries ++ [ pkgs.stdenv.cc.cc.lib ])}" \
                 "$out/bin/sonora"
               wrapProgram "$out/bin/sonora" \
-                --set ALSA_PLUGIN_DIR ${alsaPluginDirectory} \
-                --prefix GIO_EXTRA_MODULES : ${pkgs.glib-networking}/lib/gio/modules \
-                --prefix GST_PLUGIN_SYSTEM_PATH_1_0 : ${gstPluginPath}
+                --set ALSA_PLUGIN_DIR ${alsaPluginDirectory}
             '';
 
             meta = {
@@ -332,8 +316,6 @@
                 dbus
                 sqlite
                 openssl
-                webkitgtk_4_1
-                glib-networking
               ]
             else
               [ ];
@@ -373,7 +355,6 @@
                 "";
 
             shellHook =
-              # WebKit composites through EGL, which has to find the same drivers.
               pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
                 if [ ! -d /run/opengl-driver ]; then
                   export VK_DRIVER_FILES="${pkgs.mesa}/share/vulkan/icd.d"
@@ -382,30 +363,16 @@
                   export LIBGL_DRIVERS_PATH="${pkgs.mesa}/lib/dri"
                   export GBM_BACKENDS_PATH="${pkgs.mesa}/lib/gbm"
                 fi
-                export GIO_EXTRA_MODULES="${pkgs.glib-networking}/lib/gio/modules''${GIO_EXTRA_MODULES:+:$GIO_EXTRA_MODULES}"
-                export GST_PLUGIN_SYSTEM_PATH_1_0="${
-                  pkgs.lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" (
-                    with pkgs.gst_all_1;
-                    [
-                      gstreamer
-                      gst-plugins-base
-                      gst-plugins-good
-                    ]
-                  )
-                }''${GST_PLUGIN_SYSTEM_PATH_1_0:+:$GST_PLUGIN_SYSTEM_PATH_1_0}"
               ''
               # gpui_apple compiles its shaders with `xcrun -sdk macosx metal` at build
               # time. The Nix Apple SDK has no Metal toolchain, so hand xcrun back to the
-              # installed Xcode. Clang follows DEVELOPER_DIR too and then reads Xcode's C
-              # headers beside the Nix libc++, which breaks any C++ a build script compiles,
-              # so C++ compiles are pinned to the Nix SDK through CXXFLAGS. Only compiles: the
-              # link still has to see Xcode's SDK, which is where libsqlite3 comes from.
+              # installed Xcode. The link still has to see Xcode's SDK, which is where
+              # libsqlite3 comes from.
               + lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
                 # xcode-select echoes DEVELOPER_DIR back when it is set, so ask with it unset.
                 if xcode="$(env -u DEVELOPER_DIR /usr/bin/xcode-select -p 2>/dev/null)"; then
                   export DEVELOPER_DIR="$xcode"
                   export PATH="${xcodeXcrun}/bin:$PATH"
-                  export CXXFLAGS="''${CXXFLAGS:-} -isysroot $SDKROOT"
                 fi
               '';
           };

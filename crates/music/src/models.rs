@@ -12,16 +12,6 @@ pub struct UserProfile {
     pub avatar: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct UserDetail {
-    pub id: String,
-    pub name: String,
-    pub avatar: Option<String>,
-    pub followers: Option<u64>,
-    pub following: Option<u64>,
-    pub playlists: Vec<Playlist>,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Contributor {
     pub id: String,
@@ -243,7 +233,6 @@ pub struct TrackTags {
 pub struct PlaylistDetail {
     pub playlist: Playlist,
     pub tracks: Vec<Track>,
-    pub continuation: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -269,22 +258,6 @@ pub struct Artist {
     pub monthly_listeners: Option<u64>,
     pub top_tracks: Vec<Track>,
     pub albums: Vec<Album>,
-}
-
-/// What an artist page fills in once its overview is already on screen. Every list
-/// replaces what `MusicApi::artist` answered with, and an empty one leaves that part alone.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ArtistCatalogue {
-    pub albums: Vec<Album>,
-    pub top_tracks: Vec<Track>,
-    /// What the artist guests on, from the provider's appears-on listing.
-    pub appears_on: Vec<Album>,
-}
-
-impl ArtistCatalogue {
-    pub fn is_empty(&self) -> bool {
-        self.albums.is_empty() && self.top_tracks.is_empty() && self.appears_on.is_empty()
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -482,39 +455,6 @@ pub struct LyricsHit {
     pub album: Option<String>,
     pub duration: Option<Duration>,
     pub writers: Vec<String>,
-}
-
-/// Something the provider keeps sidebar pins for, with whether it is pinned now. The uri is
-/// the provider's own and is what `MusicApi::set_pinned` takes.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PinTarget {
-    pub uri: String,
-    pub name: String,
-    pub subtitle: String,
-    pub cover: Option<String>,
-    pub kind: PinTargetKind,
-    pub pinned: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PinTargetKind {
-    Playlist,
-    Album,
-    Artist,
-    LikedSongs,
-    Audiobook,
-    Show,
-    Folder,
-}
-
-/// How a provider answered a pin change. `LimitReached` means it turned the pin away for
-/// holding too many already, and `Outside` that it can only pin what is in the listener's
-/// library. Either way the pin stays a local one.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PinOutcome {
-    Updated,
-    LimitReached,
-    Outside,
 }
 
 #[cfg(test)]

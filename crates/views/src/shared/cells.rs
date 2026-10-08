@@ -399,17 +399,12 @@ pub(crate) fn avatar<F>(cell: &Cell<F>, url: Option<String>) -> AnyElement {
 }
 
 fn portrait(added: &Contributor, row: usize) -> Stateful<Div> {
-    div()
-        .id(("added-face", row))
-        .flex_none()
-        .cursor_pointer()
-        .link(Destination::User(added.id.clone().into()))
-        .child(
-            Artwork::new(added.avatar.clone())
-                .circle()
-                .size(FACE)
-                .fallback(PERSON),
-        )
+    div().id(("added-face", row)).flex_none().child(
+        Artwork::new(added.avatar.clone())
+            .circle()
+            .size(FACE)
+            .fallback(PERSON),
+    )
 }
 
 pub(crate) fn added_by<F>(cell: &Cell<F>, added: &Contributor, color: Hsla) -> AnyElement {
@@ -423,8 +418,6 @@ pub(crate) fn added_by<F>(cell: &Cell<F>, added: &Contributor, color: Hsla) -> A
                 .id(("added-name", cell.row))
                 .min_w_0()
                 .truncate()
-                .hover(|style| style.underline())
-                .link(Destination::User(added.id.clone().into()))
                 .child(SharedString::from(added.name.clone())),
         )
         .into_any_element()

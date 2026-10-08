@@ -6,19 +6,15 @@
 //! rather than on the heap, and the kernel can drop it under pressure where it could never drop
 //! a buffer. Memory is the fallback for a system where no such file can be made.
 //!
-//! Every provider that streams a file over HTTP uses this. What differs between them is where
-//! the bytes come from, which is [`Source`], and what happens to them, which is [`Body`].
-//! Subsonic and YouTube Music take them as they come, Deezer decrypts each Blowfish stripe as
-//! it lands, and Apple Music indexes CENC fragments and hands each sample to a CDM the moment a
-//! reader asks for it. Everything else, the waiting and the seeking and what a broken
-//! connection does, is the same for all of them and lives here.
+//! Subsonic takes bytes as they come. The waiting, seeking and what a broken connection does
+//! live here.
 
 use std::fs::File;
 use std::future::Future;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::ops::Range;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, Weak};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::{Result, bail};
 use bytes::Bytes;
@@ -144,10 +140,6 @@ impl Spool {
         self.len
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
     /// Fills `out` from position `at`. Asking for anything past what has arrived is an error.
     pub fn read_at(&self, at: usize, out: &mut [u8]) -> io::Result<()> {
         let end = self.check(at, out.len())?;
@@ -155,25 +147,6 @@ impl Spool {
             Store::File(file) => read_exact_at(file, out, at as u64),
             Store::Memory(held) => {
                 out.copy_from_slice(&held[at..end]);
-                Ok(())
-            }
-        }
-    }
-
-    /// A copy of `range`, which must lie within what has arrived.
-    pub fn bytes(&self, range: Range<usize>) -> io::Result<Vec<u8>> {
-        let mut out = vec![0; range.end.saturating_sub(range.start)];
-        self.read_at(range.start, &mut out)?;
-        Ok(out)
-    }
-
-    /// Overwrites the bytes at `at` with `bytes`, which must lie within what has arrived.
-    pub fn write_at(&mut self, at: usize, bytes: &[u8]) -> io::Result<()> {
-        let end = self.check(at, bytes.len())?;
-        match &mut self.store {
-            Store::File(file) => write_all_at(file, bytes, at as u64),
-            Store::Memory(held) => {
-                held[at..end].copy_from_slice(bytes);
                 Ok(())
             }
         }
@@ -257,14 +230,6 @@ impl<B: Body> Shared<B> {
 /// cursor over them, so a preloaded track can be decoded more than once.
 pub struct Stream<B = Plain> {
     shared: Arc<Shared<B>>,
-    arrived: watch::Receiver<usize>,
-}
-
-/// A handle on a [`Stream`] that does not keep it alive, for background work that should stop
-/// once nothing else wants the track. The download stops when the last strong handle goes,
-/// whatever weak ones are left.
-pub struct WeakStream<B = Plain> {
-    shared: Weak<Shared<B>>,
     arrived: watch::Receiver<usize>,
 }
 
@@ -353,19 +318,6 @@ impl<B: Body> Stream<B> {
     pub fn reader(&self) -> Reader<B> {
         Reader {
             shared: self.shared.clone(),
-            head: 0,
-            from: 0,
-            at: 0,
-        }
-    }
-
-    /// A cursor that serves the first `head` bytes and then carries on from `from`, so a
-    /// decoder can be opened part way into a file that describes itself up front.
-    pub fn spliced(&self, head: usize, from: usize) -> Reader<B> {
-        Reader {
-            shared: self.shared.clone(),
-            head,
-            from,
             at: 0,
         }
     }
@@ -379,59 +331,6 @@ impl<B: Body> Stream<B> {
             .or_else(|| state.complete.then_some(state.spool.len() as u64))
     }
 
-    /// How much has arrived so far.
-    pub fn arrived(&self) -> usize {
-        self.shared
-            .state
-            .lock()
-            .map(|state| state.spool.len())
-            .unwrap_or(0)
-    }
-
-    /// Reaches the provider's own half of the spool, and again on every chunk that lands,
-    /// until it answers something or the download ends. The third argument is whether the body
-    /// is complete, so a question with no answer left can say so rather than wait.
-    ///
-    /// This blocks whichever thread asks, bounded by the same patience a read has. It is for a
-    /// question a reader would otherwise have to guess at, where guessing is worse than
-    /// waiting: where in the file a position is, when the download has not reached it yet.
-    pub fn awaiting<T>(
-        &self,
-        mut read: impl FnMut(&mut B, &mut Spool, bool) -> Option<T>,
-    ) -> Option<T> {
-        let mut state = self.shared.state.lock().ok()?;
-        let deadline = Instant::now() + PATIENCE;
-        loop {
-            let Buffered {
-                spool,
-                body,
-                complete,
-                failed,
-                ..
-            } = &mut *state;
-            let (complete, broken) = (*complete, failed.is_some());
-            if let Some(found) = read(body, spool, complete) {
-                return Some(found);
-            }
-            if complete || broken {
-                return None;
-            }
-            let left = deadline.checked_duration_since(Instant::now())?;
-            let (held, timed_out) = self.shared.filled.wait_timeout(state, left).ok()?;
-            if timed_out.timed_out() {
-                return None;
-            }
-            state = held;
-        }
-    }
-
-    /// Reaches the provider's own half of the spool, for anything it keeps there.
-    pub fn with<T>(&self, read: impl FnOnce(&mut B, &mut Spool) -> T) -> Option<T> {
-        let mut state = self.shared.state.lock().ok()?;
-        let Buffered { spool, body, .. } = &mut *state;
-        Some(read(body, spool))
-    }
-
     pub fn done(&self) -> bool {
         self.shared
             .state
@@ -442,37 +341,6 @@ impl<B: Body> Stream<B> {
 
     pub fn failed(&self) -> Option<String> {
         self.shared.state.lock().ok()?.failed.clone()
-    }
-
-    pub fn downgrade(&self) -> WeakStream<B> {
-        WeakStream {
-            shared: Arc::downgrade(&self.shared),
-            arrived: self.arrived.clone(),
-        }
-    }
-}
-
-impl<B: Body> WeakStream<B> {
-    pub fn upgrade(&self) -> Option<Stream<B>> {
-        Some(Stream {
-            shared: self.shared.upgrade()?,
-            arrived: self.arrived.clone(),
-        })
-    }
-
-    /// Waits until the download has ended, whether it finished or broke, without keeping it
-    /// alive in the meantime. False when every strong handle went first.
-    pub async fn finished(&mut self) -> bool {
-        loop {
-            match self.upgrade() {
-                Some(stream) if stream.done() => return true,
-                Some(_) => {}
-                None => return false,
-            }
-            if self.arrived.changed().await.is_err() {
-                return self.upgrade().is_some_and(|stream| stream.done());
-            }
-        }
     }
 }
 
@@ -536,28 +404,10 @@ async fn pump<S: Source, B: Body>(
 /// so a decoder simply waits out a slow connection.
 pub struct Reader<B = Plain> {
     shared: Arc<Shared<B>>,
-    /// The end of the part served from the front of the file, when this cursor is spliced.
-    head: usize,
-    /// Where the rest is served from. Zero for a plain cursor.
-    from: usize,
-    /// Where the cursor is, in what it presents rather than in the file.
     at: u64,
 }
 
 impl<B: Body> Reader<B> {
-    /// The byte in the file that `at` presents, which differs only past the head of a splice.
-    fn place(&self, at: u64) -> u64 {
-        match at < self.head as u64 {
-            true => at,
-            false => self.from as u64 + (at - self.head as u64),
-        }
-    }
-
-    /// A length in the file, as this cursor presents it.
-    fn presented(&self, length: usize) -> u64 {
-        self.head as u64 + length.saturating_sub(self.from) as u64
-    }
-
     /// The end of the track: the announced length, or the final length once the download ends.
     /// A server that announced nothing makes this wait for the last byte.
     fn end(&self) -> u64 {
@@ -566,16 +416,16 @@ impl<B: Body> Reader<B> {
         };
         loop {
             if let Some(total) = state.total {
-                return self.presented(total as usize);
+                return total;
             }
             if state.complete {
-                return self.presented(state.spool.len());
+                return state.spool.len() as u64;
             }
             let Ok((held, timed_out)) = self.shared.filled.wait_timeout(state, PATIENCE) else {
                 return 0;
             };
             if timed_out.timed_out() {
-                return self.presented(held.spool.len());
+                return held.spool.len() as u64;
             }
             state = held;
         }
@@ -596,24 +446,17 @@ impl<B: Body> Read for Reader<B> {
                 total,
                 ..
             } = &mut *state;
-            let limit = self.presented(body.limit(spool, *complete));
+            let limit = body.limit(spool, *complete) as u64;
             if self.at < limit {
-                // A read never crosses a splice: the bytes on either side of it are nowhere
-                // near each other in the file.
-                let wanted = match self.at < self.head as u64 {
-                    true => out.len().min(self.head - self.at as usize),
-                    false => out.len(),
-                };
-                let start = self.place(self.at) as usize;
-                let end = (start + wanted).min(self.place(limit) as usize);
+                let start = self.at as usize;
+                let end = (start + out.len()).min(limit as usize);
                 body.ready(spool, start..end)?;
                 spool.read_at(start, &mut out[..end - start])?;
                 self.at += (end - start) as u64;
                 return Ok(end - start);
             }
-            let ending = total
-                .map(|total| self.presented(total as usize))
-                .is_some_and(|total| self.at + body.tail() >= total && self.at < total);
+            let ending =
+                total.is_some_and(|total| self.at + body.tail() >= total && self.at < total);
             if let Some(failed) = &state.failed {
                 return Err(io::Error::other(failed.clone()));
             }
@@ -811,21 +654,5 @@ mod tests {
         let mut reader = stream.reader();
         reader.seek(SeekFrom::End(-4)).unwrap();
         assert_eq!(reader.read(&mut [0u8; 4]).unwrap(), 0);
-    }
-
-    /// A spliced cursor presents the head of the file followed by a later part of it, which is
-    /// what lets a decoder open at a position instead of reading its way there.
-    #[test]
-    fn a_spliced_cursor_joins_the_head_to_a_later_part() {
-        let stream = stream(Plain, Some(10));
-        feed(&stream, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-        finish(&stream, None);
-
-        let mut reader = stream.spliced(3, 7);
-        let mut out = Vec::new();
-        reader.read_to_end(&mut out).unwrap();
-        assert_eq!(out, vec![0, 1, 2, 7, 8, 9]);
-        // And it reports its own length, not the file's.
-        assert_eq!(reader.seek(SeekFrom::End(0)).unwrap(), 6);
     }
 }

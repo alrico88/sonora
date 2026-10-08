@@ -468,16 +468,7 @@ impl Default for Values {
             lyrics_for_local_files: true,
             prefer_local_lyrics: false,
             local_lyrics_offered: false,
-            lyrics_providers: [
-                LOCAL,
-                "Spotify",
-                "YouTube Music",
-                "Apple Music",
-                "Musixmatch",
-                "LrcLib",
-            ]
-            .map(str::to_owned)
-            .to_vec(),
+            lyrics_providers: [LOCAL, "Musixmatch", "LrcLib"].map(str::to_owned).to_vec(),
             karaoke_lyrics: true,
             blur_lyrics: true,
             romanized_lyrics: true,
@@ -552,7 +543,7 @@ impl Default for StateValues {
             shuffle: false,
             repeat: Repeat::Off,
             radio: false,
-            provider: "spotify".to_owned(),
+            provider: "subsonic".to_owned(),
             tables: HashMap::new(),
             sorting: HashMap::new(),
             filters: HashMap::new(),
@@ -691,7 +682,7 @@ impl AppSettings {
             }
         };
         let parsed = bytes.map(|bytes| (serde_json::from_slice::<Values>(json(&bytes)), bytes));
-        let (values, writable, disk, broken) = match parsed {
+        let (mut values, writable, disk, broken) = match parsed {
             Some((Ok(values), bytes)) => (values, writable, Some(bytes), None),
             Some((Err(error), _)) => {
                 log::warn!("settings: cannot parse {}: {error}", path.display());
@@ -699,6 +690,7 @@ impl AppSettings {
             }
             None => (Values::default(), writable, None, None),
         };
+        remove_retired_lyrics_providers(&mut values);
 
         let state = match store.load() {
             Ok(Some(saved)) => saved,
@@ -2029,7 +2021,7 @@ impl AppSettings {
             self.broken = None;
             return SettingsReload::Unchanged;
         }
-        let values = match serde_json::from_slice::<Values>(json(&bytes)) {
+        let mut values = match serde_json::from_slice::<Values>(json(&bytes)) {
             Ok(values) => values,
             Err(error) => {
                 log::warn!("settings: cannot parse {}: {error}", self.path.display());
@@ -2043,6 +2035,7 @@ impl AppSettings {
                 return SettingsReload::Unchanged;
             }
         };
+        remove_retired_lyrics_providers(&mut values);
 
         log::info!("settings: reloaded {}", self.path.display());
         let previous = std::mem::replace(&mut self.values, values);
@@ -2216,6 +2209,15 @@ fn load_themes(directory: &Path, previous: &[CustomTheme]) -> LoadedThemes {
 /// front of it on Windows, which serde_json rejects as an unexpected character.
 fn json(bytes: &[u8]) -> &[u8] {
     bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes)
+}
+
+fn remove_retired_lyrics_providers(values: &mut Values) {
+    values.lyrics_providers.retain(|provider| {
+        !matches!(
+            provider.as_str(),
+            "Spotify" | "YouTube Music" | "Apple Music"
+        )
+    });
 }
 
 /// Parses one theme file and assigns the identifier derived from its path.
@@ -2516,8 +2518,8 @@ mod tests {
 
     #[test]
     fn the_saved_position_follows_the_same_track() {
-        let previous = resume("spotify", "abc", 42.);
-        let mut next = resume("spotify", "abc", 0.);
+        let previous = resume("subsonic", "abc", 42.);
+        let mut next = resume("subsonic", "abc", 0.);
 
         carry(Some(&previous), &mut next);
 
@@ -2526,8 +2528,8 @@ mod tests {
 
     #[test]
     fn a_new_track_starts_from_the_beginning() {
-        let previous = resume("spotify", "abc", 42.);
-        let mut next = resume("spotify", "def", 0.);
+        let previous = resume("subsonic", "abc", 42.);
+        let mut next = resume("subsonic", "def", 0.);
 
         carry(Some(&previous), &mut next);
 
@@ -2536,8 +2538,8 @@ mod tests {
 
     #[test]
     fn another_provider_never_inherits_a_position() {
-        let previous = resume("spotify", "abc", 42.);
-        let mut next = resume("youtube", "abc", 0.);
+        let previous = resume("subsonic", "abc", 42.);
+        let mut next = resume("local", "abc", 0.);
 
         carry(Some(&previous), &mut next);
 
@@ -2546,14 +2548,14 @@ mod tests {
 
     #[test]
     fn a_first_record_starts_from_the_beginning() {
-        let mut next = resume("spotify", "abc", 42.);
+        let mut next = resume("subsonic", "abc", 42.);
 
         carry(None, &mut next);
 
         assert_eq!(next.position, 0.);
     }
 
-    const SLUGS: [&str; 2] = ["spotify", "local"];
+    const SLUGS: [&str; 2] = ["subsonic", "local"];
 
     fn pin(id: &str) -> Pin {
         Pin::new(PinKind::Album, id, id)
@@ -2582,9 +2584,9 @@ mod tests {
         let store = StateStore::new(Database::at(path.clone()));
         let state = StateValues {
             volume: 0.2,
-            provider: "youtube".to_owned(),
+            provider: "subsonic".to_owned(),
             sidebar_right_open: true,
-            pinned: vec![held("spotify", "album")],
+            pinned: vec![held("subsonic", "album")],
             ..StateValues::default()
         };
 
@@ -2592,7 +2594,7 @@ mod tests {
         let loaded = store.load().expect("state loads").expect("state exists");
 
         assert_eq!(loaded.volume, 0.2);
-        assert_eq!(loaded.provider, "youtube");
+        assert_eq!(loaded.provider, "subsonic");
         assert!(loaded.sidebar_right_open);
         assert_eq!(loaded.pinned.len(), 1);
 
@@ -2606,72 +2608,72 @@ mod tests {
 
     #[test]
     fn a_fresh_pin_lands_at_the_gap() {
-        let mut pinned = vec![held("spotify", "a"), held("spotify", "b")];
+        let mut pinned = vec![held("subsonic", "a"), held("subsonic", "b")];
 
-        assert!(place(&mut pinned, "spotify", pin("c"), Some(1), &SLUGS));
+        assert!(place(&mut pinned, "subsonic", pin("c"), Some(1), &SLUGS));
         assert_eq!(ids(&pinned), ["a", "c", "b"]);
     }
 
     #[test]
     fn no_gap_appends() {
-        let mut pinned = vec![held("spotify", "a")];
+        let mut pinned = vec![held("subsonic", "a")];
 
-        assert!(place(&mut pinned, "spotify", pin("b"), None, &SLUGS));
+        assert!(place(&mut pinned, "subsonic", pin("b"), None, &SLUGS));
         assert_eq!(ids(&pinned), ["a", "b"]);
     }
 
     #[test]
     fn a_gap_past_the_end_still_appends() {
-        let mut pinned = vec![held("spotify", "a")];
+        let mut pinned = vec![held("subsonic", "a")];
 
-        assert!(place(&mut pinned, "spotify", pin("b"), Some(9), &SLUGS));
+        assert!(place(&mut pinned, "subsonic", pin("b"), Some(9), &SLUGS));
         assert_eq!(ids(&pinned), ["a", "b"]);
     }
 
     #[test]
     fn pinning_twice_moves_instead_of_duplicating() {
         let mut pinned = vec![
-            held("spotify", "a"),
-            held("spotify", "b"),
-            held("spotify", "c"),
+            held("subsonic", "a"),
+            held("subsonic", "b"),
+            held("subsonic", "c"),
         ];
 
-        assert!(place(&mut pinned, "spotify", pin("a"), Some(3), &SLUGS));
+        assert!(place(&mut pinned, "subsonic", pin("a"), Some(3), &SLUGS));
         assert_eq!(ids(&pinned), ["b", "c", "a"]);
     }
 
     #[test]
     fn a_move_backwards_keeps_the_gap() {
         let mut pinned = vec![
-            held("spotify", "a"),
-            held("spotify", "b"),
-            held("spotify", "c"),
+            held("subsonic", "a"),
+            held("subsonic", "b"),
+            held("subsonic", "c"),
         ];
 
-        assert!(place(&mut pinned, "spotify", pin("c"), Some(0), &SLUGS));
+        assert!(place(&mut pinned, "subsonic", pin("c"), Some(0), &SLUGS));
         assert_eq!(ids(&pinned), ["c", "a", "b"]);
     }
 
     #[test]
     fn the_gaps_around_an_item_are_no_ops() {
         let mut pinned = vec![
-            held("spotify", "a"),
-            held("spotify", "b"),
-            held("spotify", "c"),
+            held("subsonic", "a"),
+            held("subsonic", "b"),
+            held("subsonic", "c"),
         ];
 
-        assert!(!place(&mut pinned, "spotify", pin("b"), Some(1), &SLUGS));
-        assert!(!place(&mut pinned, "spotify", pin("b"), Some(2), &SLUGS));
+        assert!(!place(&mut pinned, "subsonic", pin("b"), Some(1), &SLUGS));
+        assert!(!place(&mut pinned, "subsonic", pin("b"), Some(2), &SLUGS));
         assert_eq!(ids(&pinned), ["a", "b", "c"]);
     }
 
     #[test]
     fn kinds_with_the_same_id_stay_apart() {
-        let mut pinned = vec![held("spotify", "x")];
+        let mut pinned = vec![held("subsonic", "x")];
 
         assert!(place(
             &mut pinned,
-            "spotify",
+            "subsonic",
             Pin::new(PinKind::Song, "x", "x"),
             None,
             &SLUGS

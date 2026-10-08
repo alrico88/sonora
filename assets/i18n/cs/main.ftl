@@ -169,17 +169,7 @@ menu-rename-playlist = Přejmenovat playlist
 menu-delete-playlist = Smazat playlist
 menu-add-playlist-to-library = Přidat do knihovny
 menu-remove-playlist-from-library = Odebrat z knihovny
-menu-library-add = Přidat do knihovny
-menu-library-add-tracks = { $count ->
-    [one] Přidat { $count } skladbu do knihovny
-    [few] Přidat { $count } skladby do knihovny
-   *[other] Přidat { $count } skladeb do knihovny
 }
-menu-library-remove = Odebrat z knihovny
-menu-library-remove-tracks = { $count ->
-    [one] Odebrat { $count } skladbu z knihovny
-    [few] Odebrat { $count } skladby z knihovny
-   *[other] Odebrat { $count } skladeb z knihovny
 }
 menu-make-playlist-public = Nastavit jako veřejný
 menu-make-playlist-private = Nastavit jako soukromý
@@ -290,53 +280,18 @@ tool-filters = Filtry
 # login
 login-signed-out = Přihlas se a načti svou hudební knihovnu
 login-restoring = Kontroluji uloženou relaci…
-login-authorizing = Čekám na autorizaci v prohlížeči…
+login-authorizing = Připojuji se k účtu…
 login-signed-in = Přihlášeno jako { $name }
 login-failed-title = Přihlášení se nezdařilo
-login-problem-region = Spotify neotevře relaci ze země, ve které právě jsi. Přihlas se ze své domovské země, nebo změň zemi na svém účtu Spotify.
-login-problem-credentials = Tvoje uložená relace Spotify už není platná. Pro pokračování se přihlas znovu.
 login-problem-network = Sonora se nedostala k hudební službě. Zkontroluj připojení k internetu a zkus to znovu.
-login-problem-cancelled = Přihlášení nebylo schváleno a stránka v prohlížeči byla zavřena. Začni znovu, aby se přihlášení dokončilo.
-login-problem-refused = Spotify přihlášení odmítla. Počkej chvíli a zkus to znovu.
-login-problem-premium = Sonora streamuje přes Spotify Premium a tento účet ho nemá. Pro pokračování se přihlas účtem s Premium.
 login-sign-in = Přihlásit se přes { $provider }
-login-connect-cookies = Vložit cookies ručně
-login-cookie-open = Otevřít { $provider }
-login-cookie-submit = Pokračovat
-login-cookie-hint = Sem vlož hlavičku Cookie z požadavku
-login-cookie-step-1 = Otevři music.youtube.com a ujisti se, že jsi přihlášen. Nejlépe funguje anonymní okno.
-login-cookie-step-2 = Stiskni F12, otevři kartu Network a obnov stránku.
-login-cookie-step-3 = Vyber jakýkoli požadavek s názvem „browse“ nebo „next“.
-login-cookie-step-4 = V kartě Headers najdi Cookie v části Request Headers, klikni na něj pravým tlačítkem a zkopíruj jeho hodnotu.
-login-cookie-step-note = Vlož celou hodnotu včetně SAPISID a __Secure-3PAPISID.
-login-cookie-header-title = Vlož své cookies { $provider } a dokonči přihlášení
-login-cookie-apple-step-3 = Vyber jakýkoli požadavek na { $site }.
-login-cookie-apple-note = Vlož celou hodnotu včetně { $cookie }.
-login-cookie-named-title = Vlož cookie { $provider } a dokonči přihlášení
-login-cookie-named-hint = Sem vlož hodnotu cookie
-login-cookie-named-step-1 = Otevři { $site } a ujisti se, že jsi přihlášen.
-login-cookie-named-step-2 = Stiskni F12 a ve Firefoxu otevři kartu Storage, v Chromu kartu Application.
-login-cookie-named-step-3 = Rozbal Cookies, vyber { $site } a najdi cookie s názvem { $cookie }.
-login-cookie-named-step-4 = Dvojklikni na jeho hodnotu a zkopíruj ji.
-login-cookie-named-note = Stačí samotná hodnota { $cookie }. Funguje i celá hlavička Cookie zkopírovaná z karty Network.
-login-window-title = Přihlášení k { $provider }
-login-use = Použít { $provider }
-login-guest-title = Režim hosta
-login-guest-use = Použít režim hosta
-login-guest-detail = Prohlížej a přehrávej bez účtu. Tvoje knihovna, oblíbené skladby a playlisty zůstanou nedostupné.
 login-usage-consent = Pomoz nám odhadnout, kolik lidí používá Sonoru.
-login-device-code = Zadej tento kód na { $url }
 login-server-title = Připojit se k tvému serveru Subsonic
 login-server-detail = Zadej adresu libovolného serveru Subsonic nebo OpenSubsonic (Navidrome, Airsonic, Gonic, …) a pak se přihlas uživatelským jménem a heslem k serveru. Relace zůstane na tomto zařízení.
 login-server-hint = https://music.example.com
 login-username-hint = Uživatelské jméno
 login-password-hint = Heslo
 login-server-submit = Připojit
-login-account-title = Vyber účet
-login-account-detail = Tato relace je přihlášena k více účtům Google. Vyber ten, který má Sonora používat.
-login-choose-title = Přihlásit se k { $provider }
-login-choose-detail = Vyber způsob přihlášení k { $provider }.
-
 # album and playlist pages
 detail-playlist = Playlist
 detail-play-album = Přehrát album
@@ -367,26 +322,10 @@ artist-filter-all = Vše
 artist-filter-albums = Alba
 artist-filter-singles = Singly
 artist-filter-eps = EP
-artist-appears-on = Objevuje se na
 album-also-like = Možná se ti bude líbit
 album-tab-albums = Alba
 album-tab-artists = Interpreti
 album-label = ℗ { $label }
-
-# user profile page
-user-eyebrow = Profil
-user-followers = { $count ->
-    [one] { $value } sledující
-    [few] { $value } sledující
-   *[other] { $value } sledujících
-}
-user-following = { $count ->
-    [one] { $value } sledovaný
-    [few] { $value } sledovaní
-   *[other] { $value } sledovaných
-}
-user-playlists = Veřejné playlisty
-user-playlists-empty = Zatím žádné veřejné playlisty
 
 # release kinds
 release-album = Album
@@ -626,31 +565,6 @@ settings-sleep-configure = Nastavit…
 settings-sleep-off = Vypnutý
 settings-sleep-end-of-track = Na konci skladby
 settings-sleep-minutes = { $count } min
-settings-widevine = Modul Widevine
-settings-widevine-detail = Skladby Apple Music jsou šifrované a potřebují modul Widevine od Googlu. Sonora použije ten, který si s tvým souhlasem stáhla od Googlu, nebo kopii, kterou už má prohlížeč v tomto zařízení.
-settings-widevine-none = Skladby Apple Music jsou šifrované a potřebují modul Widevine od Googlu. Žádný prohlížeč v tomto zařízení ho nemá, takže ho Sonora může s tvým souhlasem stáhnout od Googlu.
-settings-widevine-looking = Hledá se…
-settings-widevine-asking = Čeká se na tvoji odpověď
-settings-widevine-fetching = Stahuje se…
-settings-widevine-installing = Instaluje se…
-settings-widevine-installed = Nalezen v prohlížeči
-settings-widevine-fetched = Stažen od Googlu
-settings-widevine-missing = Nenainstalován
-settings-widevine-configured = Nastaven proměnnou prostředí
-settings-widevine-fetch = Stáhnout
-settings-widevine-uninstall = Odinstalovat
-confirm-uninstall-widevine-title = Odinstalovat modul Widevine?
-confirm-uninstall-widevine = Sonora smaže kopii, kterou stáhla od Googlu. Skladby Apple Music přestanou přehrávat, dokud se znovu nestáhne.
-widevine-prompt-title = Modul Widevine
-widevine-prompt-wanted = Skladby Apple Music jsou šifrované a potřebují modul Widevine od Googlu. Žádný prohlížeč v tomto počítači ho nemá. Sonora ho může stáhnout ze serverů Googlu, stejný soubor, který instaluje Chrome, a uložit do své vlastní složky.
-widevine-prompt-replace = Skladby Apple Music jsou šifrované a potřebují modul Widevine od Googlu. Prohlížeč v tomto počítači ho má a Sonora si místo něj může stáhnout vlastní kopii od Googlu, stejný soubor, který instaluje Chrome, a uložit ji do své složky.
-widevine-prompt-downloading = Stahuje se…
-widevine-prompt-terms = Stáhla se verze { $version }. Instalací přijímáš podmínky Googlu pro tento modul:
-widevine-prompt-installing = Instaluje se…
-widevine-prompt-download = Stáhnout
-widevine-prompt-later = Teď ne
-widevine-prompt-accept = Přijmout a nainstalovat
-widevine-prompt-decline = Odmítnout
 settings-equalizer = Ekvalizér
 settings-equalizer-detail = Upravuje zvuk v deseti pásmech, jedno pásmo na oktávu
 settings-equalizer-preset = Předvolba
@@ -697,9 +611,6 @@ settings-lyrics-providers-selected = { $count ->
    *[other] Vybráno { $count } poskytovatelů
     }
 settings-lyrics-provider-local = Místní soubory
-settings-lyrics-provider-spotify = Spotify
-settings-lyrics-provider-youtube = YouTube Music
-settings-lyrics-provider-apple-music = Apple Music
 settings-lyrics-provider-musixmatch = Musixmatch
 settings-lyrics-provider-lrclib = LRCLIB
 settings-lyrics-provider-kugou = Kugou
@@ -731,7 +642,6 @@ settings-accounts-detail = Služby, ze kterých toto zařízení umí přehráva
 settings-provider-none = Nepřipojeno
 settings-provider-connected = Připojeno
 settings-provider-current = Přehrává se z této služby
-settings-provider-guest = Přehrává se jako host
 settings-provider-switch = Přepnout na
 settings-sign-out = Odhlásit se
 settings-group-scrobbling = Scrobblování
@@ -779,7 +689,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = Hlavní správce
 settings-role-maintainer = Správce
 settings-role-contributor = Přispěvatel
-settings-notice = Copyright © 2026 Přispěvatelé projektu Sonora. Sonora je poskytována bez jakýchkoli záruk. Jde o svobodný software a můžeš ji šířit za podmínek GNU General Public License verze 3 nebo novější. Sonora není oficiální a není spojena se Spotify AB.
 
 # themes
 theme-system = Podle systému
@@ -836,14 +745,10 @@ toast-queued-artist = Interpret přidán do fronty
 toast-next-artist = Interpret se přehrá jako další
 toast-last-artist = Interpret se přehrá jako poslední
 toast-queue-failed = Toto se nepodařilo přidat do fronty
-toast-keys-refused = Spotify tomuto účtu neuděluje klíče pro přehrávání
 toast-sign-in-to-play = { $name } lze streamovat jen po přihlášení
 toast-track-unplayable = { $name } se nepodařilo přehrát
 toast-library-add-failed = { $name } se nepodařilo přidat do tvé knihovny
 toast-library-remove-failed = { $name } se nepodařilo odebrat z tvé knihovny
-toast-library-added = Přidáno do tvé knihovny
-toast-library-removed = Odebráno z tvé knihovny
-
 # lyrics
 lyrics-title = Text písně
 lyrics-idle = Spusť přehrávání a text se tu objeví
@@ -893,7 +798,6 @@ toast-tags-saved = Tagy pro { $name } uloženy
 toast-tags-failed = Tagy se nepodařilo uložit
 
 nav-pin = Připnout
-toast-library-pin-failed = Připnutí se nepodařilo změnit.
 nav-nothing-pinned = Tady nic není
 nav-pins-alphabetical = Abecedně
 nav-pins-kind = Podle typu

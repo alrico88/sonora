@@ -30,7 +30,6 @@ use crate::shared::hero::{HeroMetaStrip, HeroPlayButton, PageHero};
 use crate::shared::menus::{ItemMenu, artist_menu};
 use crate::shared::page;
 use crate::shared::picks::{Picks, Shape};
-use crate::shared::shelves::{Rail, RailSpec};
 use crate::shared::tracks::{PlaybackStatus, TrackSource, Tracks, drop_picked, playback_status};
 use crate::shared::trouble;
 
@@ -108,8 +107,6 @@ pub(crate) struct ArtistView {
     /// place rather than slide the cards under the user.
     release_columns: usize,
     release_tile: Pixels,
-    /// The recommendation rails under the releases, in page order: appears-on.
-    rails: Vec<Rail>,
 }
 
 impl ArtistView {
@@ -212,7 +209,6 @@ impl ArtistView {
                 this.release_padding = Pixels::ZERO;
                 this.release_padding_offset = Pixels::ZERO;
                 this.about_open = false;
-                this.rails.clear();
                 this.shown.set(LISTED);
                 this.scrollbar.update(cx, |bar, cx| {
                     bar.set_max_offset(None, cx);
@@ -307,7 +303,6 @@ impl ArtistView {
             release_lead: Rc::new(Cell::new(None)),
             release_columns: 0,
             release_tile: Pixels::ZERO,
-            rails: Vec::new(),
         }
     }
 
@@ -615,7 +610,7 @@ impl ArtistView {
         let detail = self.detail.read(cx);
         let albums = detail.albums();
         // A discography still on its way reads as loading only while nothing of it is up.
-        let loading = detail.is_loading() || (albums.is_empty() && detail.is_filling());
+        let loading = detail.is_loading();
         if albums.is_empty() && !loading {
             return None;
         }
@@ -768,67 +763,6 @@ impl ArtistView {
                     this.set_release_view(this.release_filter, !expanded, columns, window, cx);
                 })),
         )
-    }
-
-    /// The recommendation rail under the releases: what the artist guests on. A rail
-    /// still on its way reads as skeletons only while nothing of it is up.
-    fn recommended(
-        &self,
-        window: &Window,
-        notify: &Rc<dyn Fn(&mut App)>,
-        cx: &mut App,
-    ) -> Vec<AnyElement> {
-        let grid = CardGrid::layout(self.width);
-        let card = grid.card;
-        let columns = grid.columns.max(1);
-        let detail = self.detail.read(cx);
-        let filling = detail.is_filling();
-        let appears = detail.appears_on().len();
-
-        vec![match appears {
-            0 if filling => Some(Rail::pending(
-                t!("artist-appears-on"),
-                card,
-                columns,
-                window,
-                cx,
-            )),
-            0 => None,
-            _ => {
-                let opened = self.me.clone();
-                Some(self.rails[0].render(
-                    RailSpec {
-                        tag: "artist-appears",
-                        place: 0,
-                        title: t!("artist-appears-on"),
-                        count: appears,
-                        tile: card,
-                        columns,
-                        tabs: None,
-                    },
-                    window,
-                    cx,
-                    notify,
-                    move |index, _, cx| {
-                        let Some(view) = opened.upgrade() else {
-                            return div().into_any_element();
-                        };
-                        let held = view.read(cx);
-                        let detail = held.detail.read(cx);
-                        let Some(album) = detail.appears_on().get(index) else {
-                            return div().into_any_element();
-                        };
-                        cards::album_card(("artist-appears", index), album, &held.playback, cx)
-                            .tile(card)
-                            .flat()
-                            .into_any_element()
-                    },
-                ))
-            }
-        }]
-        .into_iter()
-        .flatten()
-        .collect()
     }
 
     fn tracks_loading(&self, cx: &Context<Self>) -> AnyElement {
@@ -1096,18 +1030,7 @@ impl Render for ArtistView {
         };
         let grid = self.releases(window, cx);
         let about = self.about(cx);
-        while self.rails.is_empty() {
-            self.rails.push(Rail::new(cx.entity_id()));
-        }
-        for rail in &self.rails {
-            rail.sync();
-        }
-        let weak = cx.entity().downgrade();
-        let notify: Rc<dyn Fn(&mut App)> = Rc::new(move |cx: &mut App| {
-            weak.update(cx, |_, cx| cx.notify()).ok();
-        });
-        let rails = self.recommended(window, &notify, cx);
-        let mut children: Vec<AnyElement> = Vec::with_capacity(6 + rails.len());
+        let mut children: Vec<AnyElement> = Vec::with_capacity(6);
         children.push(
             div()
                 .child(head)
@@ -1145,7 +1068,6 @@ impl Render for ArtistView {
                     .into_any_element(),
             );
         }
-        children.extend(rails);
         children.extend(about);
         if release_padding > Pixels::ZERO {
             children.push(div().h(release_padding).flex_none().into_any_element());

@@ -52,7 +52,6 @@ pub struct Home {
     /// the page is out of sight.
     pending: Option<HomeFeed>,
     task: Option<Task<()>>,
-    naming: Option<Task<()>>,
 }
 
 impl Home {
@@ -75,7 +74,6 @@ impl Home {
                     this.reload(cx);
                 }
             }
-            SessionEvent::Reconnected => {}
         })
         .detach();
 
@@ -102,7 +100,6 @@ impl Home {
             visible: false,
             pending: None,
             task: None,
-            naming: None,
         };
         home.feed(cx);
         home
@@ -134,21 +131,11 @@ impl Home {
     }
 
     fn client(&self, cx: &App) -> Option<Arc<dyn MusicApi>> {
-        let session = self.session.read(cx);
-        if session.guest() && session.local_client().is_some() {
-            session.local_client()
-        } else {
-            session.client()
-        }
+        self.session.read(cx).client()
     }
 
-    fn shelf(&self, cx: &App) -> Shelf {
-        let session = self.session.read(cx);
-        if session.guest() {
-            Shelf::Local
-        } else {
-            Shelf::Streaming
-        }
+    fn shelf(&self, _: &App) -> Shelf {
+        Shelf::Streaming
     }
 
     pub fn is_local(&self, cx: &App) -> bool {
@@ -157,7 +144,6 @@ impl Home {
 
     fn clear(&mut self) {
         self.task = None;
-        self.naming = None;
         self.recent = Rc::new(Vec::new());
         self.picks = Rc::new(Vec::new());
         self.quick_picks = Rc::new(Vec::new());
@@ -186,9 +172,15 @@ impl Home {
         self.error = None;
         let io = self.io.clone();
         self.task = Some(cx.spawn(async move |this, cx| {
-            let opened = join(io.spawn(async move { client.home_paged().await })).await;
-            let mut feed = match opened {
-                Ok(feed) => feed,
+            let loaded = join(io.spawn(async move { client.home().await })).await;
+            match loaded {
+                Ok(feed) => {
+                    this.update(cx, |this, cx| {
+                        this.land(feed, cx);
+                        this.fed(cx);
+                    })
+                    .ok();
+                }
                 Err(error) => {
                     log::warn!("home: cannot load the feed: {error:#}");
                     this.update(cx, |this, cx| {
@@ -196,27 +188,8 @@ impl Home {
                         this.fed(cx);
                     })
                     .ok();
-                    return;
-                }
-            };
-
-            // Every lot is the whole feed so far, so each one replaces the last on the page.
-            while let Some(lot) = feed.recv().await {
-                let landed = this.update(cx, |this, cx| {
-                    match lot {
-                        Ok(feed) => this.land(feed, cx),
-                        Err(error) => {
-                            log::warn!("home: cannot load the feed: {error:#}");
-                            this.error = Some(crate::blamed(&error, cx));
-                        }
-                    }
-                    cx.notify();
-                });
-                if landed.is_err() {
-                    return;
                 }
             }
-            this.update(cx, |this, cx| this.fed(cx)).ok();
         }));
     }
 
@@ -229,7 +202,7 @@ impl Home {
         Network::reached(cx);
         if !self.visible {
             self.pending = None;
-            self.take(feed, cx);
+            self.take(feed);
             return;
         }
 
@@ -257,18 +230,15 @@ impl Home {
         held |= !grown || (feed.quick_picks.is_some() && quick_picks.is_none());
 
         self.pending = held.then_some(feed.clone());
-        self.take(
-            HomeFeed {
-                listen_again,
-                quick_picks,
-                sections,
-            },
-            cx,
-        );
+        self.take(HomeFeed {
+            listen_again,
+            quick_picks,
+            sections,
+        });
     }
 
     /// Puts a lot on the page as it is.
-    fn take(&mut self, feed: HomeFeed, cx: &mut Context<Self>) {
+    fn take(&mut self, feed: HomeFeed) {
         let mut recent = feed.listen_again;
         recent.truncate(RECENT_LIMIT);
         self.recent = Rc::new(recent);
@@ -277,7 +247,6 @@ impl Home {
         }
         self.merge();
         self.sections = Rc::new(pruned(&feed.sections));
-        self.name_playlists(feed.sections, cx);
     }
 
     /// Rebuilds what the page draws as Quick picks: the recent items, then the picks that are
@@ -314,7 +283,7 @@ impl Home {
             return;
         }
         if let Some(pending) = self.pending.take() {
-            self.take(pending, cx);
+            self.take(pending);
             cx.notify();
         }
     }
@@ -336,34 +305,6 @@ impl Home {
             self.failures = 0;
         }
         cx.notify();
-    }
-
-    fn name_playlists(&mut self, sections: Vec<GenreSection>, cx: &mut Context<Self>) {
-        if !sections
-            .iter()
-            .any(|section| section.items.iter().any(blank))
-        {
-            return;
-        }
-        let Some(client) = self.client(cx) else {
-            return;
-        };
-
-        let io = self.io.clone();
-        self.naming = Some(cx.spawn(async move |this, cx| {
-            let named = io
-                .spawn(async move { client.name_home_playlists(sections).await })
-                .await;
-            let Ok(named) = named else {
-                return;
-            };
-
-            this.update(cx, |this, cx| {
-                this.sections = Rc::new(named);
-                cx.notify();
-            })
-            .ok();
-        }));
     }
 
     /// What the page draws as Quick picks: what the provider listed as played lately, mixed,

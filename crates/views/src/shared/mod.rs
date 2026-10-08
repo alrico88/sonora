@@ -15,7 +15,6 @@ pub(crate) mod playlist_editor;
 pub(crate) mod popups;
 pub(crate) mod rating;
 pub(crate) mod shelves;
-pub(crate) mod steps;
 pub(crate) mod tag_editor;
 pub(crate) mod text;
 pub(crate) mod track_card;
@@ -24,7 +23,6 @@ pub(crate) mod transport;
 pub(crate) mod trouble;
 pub(crate) mod veil;
 pub(crate) mod visualizer;
-pub(crate) mod widevine;
 
 pub(crate) fn effects() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -33,11 +31,8 @@ pub(crate) fn effects() -> bool {
 
 pub(crate) fn provider_logo(slug: &str) -> &'static str {
     match slug {
-        "spotify" => "icons/spotify.svg",
-        "youtube" => "icons/youtubemusic.svg",
         "subsonic" => "icons/subsonic.svg",
-        "deezer" => "icons/deezer.svg",
-        "apple" => "icons/applemusic.svg",
+        "local" => "icons/music.svg",
         _ => "icons/music.svg",
     }
 }

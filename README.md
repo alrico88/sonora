@@ -22,9 +22,9 @@
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/a8N8Tx23rV)
 [![Matrix](https://img.shields.io/badge/Matrix-000000?style=for-the-badge&logo=matrix&logoColor=white)](https://matrix.to/#/#sonora:nolight.dev)
 
-### A native music streaming client, built with Rust and GPUI
+### A native music player for Subsonic servers and local files, built with Rust and GPUI
 
-Stream from your favorite services and play local files — all in one **native** app.
+Play music from a Subsonic server or your local files — all in one **native** app.
 </div>
 
 <div align="center">
@@ -61,7 +61,7 @@ Stream from your favorite services and play local files — all in one **native*
 
 ## Features
 
-* **Apple Music, Spotify, YouTube Music, Deezer, Subsonic/Navidrome** and local playback
+* **Subsonic/Navidrome servers** and local file playback
 * Gapless playback, audio normalization, shuffle, sleep timer
 * Synced/karaoke lyrics, background vocals, and romanization
 * Scrobbling with LastFM, ListenBrainz, LibreFM, and Maloja
@@ -151,7 +151,7 @@ You can set configuration options via the included Home Manager module under `pr
   programs.sonora = {
     enable = true;
     settings = {
-      provider = "youtube";
+      provider = "subsonic";
       appearance.theme = "dark";
     };
   };
@@ -180,7 +180,7 @@ Discord is the primary one, but we do have a Matrix bridge.
 We have nothing against the usage of LLMs in the project — in fact, we use them ourselves.
 We believe that AI can speed up development in a lot of meaningful ways and be a useful
 tool for learning new concepts. We have also found it particularly helpful for
-contributing to substantial codebases such as GPUI and librespot, where it has helped
+contributing to substantial codebases such as GPUI, where it has helped
 us quickly locate the relevant parts of the code.
 
 **However**, using AI cannot act as an excuse for failing to
@@ -200,21 +200,21 @@ AI-assisted proofreading and translation of human-written text are permitted.
 
 | Language | Translated | Coverage |
 | --- | --- | --- |
-| English (`en-US`) | 749/749 | 100% |
-| Deutsch (`de`) | 628/749 | 84% |
-| Español (`es`) | 690/749 | 92% |
-| Français (`fr`) | 749/749 | 100% |
-| Italiano (`it`) | 605/749 | 81% |
-| Bahasa Indonesia (`id`) | 605/749 | 81% |
-| 日本語 (`ja`) | 605/749 | 81% |
-| Русский (`ru`) | 711/749 | 95% |
-| Українська (`uk`) | 711/749 | 95% |
-| Polski (`pl`) | 711/749 | 95% |
-| Čeština (`cs`) | 743/749 | 99% |
-| Português (Brasil) (`pt-BR`) | 605/749 | 81% |
-| 简体中文 (`zh-CN`) | 605/749 | 81% |
-| Türkçe (`tr`) | 605/749 | 81% |
-| Shqip (`sq`) | 714/749 | 95% |
+| English (`en-US`) | 693/693 | 100% |
+| Deutsch (`de`) | 598/693 | 86% |
+| Español (`es`) | 636/693 | 92% |
+| Français (`fr`) | 670/693 | 97% |
+| Italiano (`it`) | 575/693 | 83% |
+| Bahasa Indonesia (`id`) | 575/693 | 83% |
+| 日本語 (`ja`) | 575/693 | 83% |
+| Русский (`ru`) | 634/693 | 91% |
+| Українська (`uk`) | 634/693 | 91% |
+| Polski (`pl`) | 634/693 | 91% |
+| Čeština (`cs`) | 665/693 | 96% |
+| Português (Brasil) (`pt-BR`) | 575/693 | 83% |
+| 简体中文 (`zh-CN`) | 575/693 | 83% |
+| Türkçe (`tr`) | 575/693 | 83% |
+| Shqip (`sq`) | 638/693 | 92% |
 
 <!-- i18n:end -->
 
@@ -233,8 +233,6 @@ AI-assisted proofreading and translation of human-written text are permitted.
 Sonora is built with the help of some incredible open-source projects, including:
 
 - [Zed](https://github.com/zed-industries/zed) — a wonderful editor (~~ab~~)used by all core team members. Conveniently provides `gpui` — their native Rust rendering stack.
-- [librespot](https://github.com/librespot-org/librespot) — Spotify playback and library integration.
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — certain YouTube ideas implemented in [ytmusic-rs](https://github.com/sonorahq/ytmusic-rs) :)
 
 ## Code signing
 Sonora has applied for code signing through SignPath Foundation. Current releases are not yet signed through SignPath Foundation. If approved, signed releases will use free code signing provided by SignPath.io, with a certificate by SignPath Foundation.
@@ -245,9 +243,6 @@ Copyright (C) 2026 Sonora Contributors.
 
 Sonora is free software, released under the [GNU General Public License version
 3 or later](COPYING).
-
-Sonora is an unofficial client and is not affiliated with, endorsed by, or
-sponsored by Spotify AB.
 
 The binary also embeds the [Inter](https://github.com/rsms/inter) typeface (SIL
 Open Font License 1.1) and four interchangeable icon sets:

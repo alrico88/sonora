@@ -7,7 +7,7 @@ use music::artwork::{ArtworkQuery, ArtworkSearch};
 use music::{MediaKind, MusicProvider, Track};
 use tokio::sync::watch;
 
-use crate::{AppSettings, Cover, DiscordName, Io, Playback, Session, Shelf, join};
+use crate::{AppSettings, DiscordName, Io, Playback, Session, Shelf, join};
 
 const APPLICATION_ID: &str = "1547350467904806923";
 const RETRY_DELAY: Duration = Duration::from_secs(3);
@@ -29,11 +29,10 @@ pub(crate) fn attach(
     playback: Entity<Playback>,
     settings: Entity<AppSettings>,
     session: Entity<Session>,
-    cover: Entity<Cover>,
     io: Io,
     cx: &mut App,
 ) {
-    let discord = cx.new(|cx| Discord::new(playback, settings, session, cover, io, cx));
+    let discord = cx.new(|cx| Discord::new(playback, settings, session, io, cx));
     cx.set_global(Attached { _discord: discord });
 }
 
@@ -109,7 +108,6 @@ struct Discord {
     playback: Entity<Playback>,
     settings: Entity<AppSettings>,
     session: Entity<Session>,
-    cover: Entity<Cover>,
     sender: watch::Sender<Shown>,
     timing: Timing,
     io: Io,
@@ -129,7 +127,6 @@ impl Discord {
         playback: Entity<Playback>,
         settings: Entity<AppSettings>,
         session: Entity<Session>,
-        cover: Entity<Cover>,
         io: Io,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -145,13 +142,10 @@ impl Discord {
             .detach();
         cx.observe(&settings, |this, _, cx| this.publish(cx))
             .detach();
-        cx.observe(&cover, |this, _, cx| this.publish(cx)).detach();
-
         Self {
             playback,
             settings,
             session,
-            cover,
             sender,
             timing: Timing::default(),
             io,
@@ -264,14 +258,13 @@ impl Discord {
                 .track_started_at(track, playback.live_position())
         });
         let duration = track.duration.as_secs() as i64;
-        let public_art = provider.is_some_and(|provider| provider.public_art());
         let lookup = !track.id.as_deref().is_some_and(music::is_local_id)
             || settings.artwork_for_local_files();
         Shown::On(Box::new(Presence {
             source: named,
             details: fit_text(&track.name).unwrap_or_else(anonymous_details),
             state: fit_text(&track.artists),
-            image: self.artwork(track, public_art, lookup, cx),
+            image: self.artwork(track, lookup),
             image_text: fit_text(&track.album),
             started_at,
             ends_at: started_at
@@ -281,31 +274,11 @@ impl Discord {
         }))
     }
 
-    /// Cover art for the track. The provider's own art is used only when it is public, since
-    /// Discord fetches the image through its own proxy, so a path on disk is unreachable and a
-    /// self-hosted url would hand over the credentials that fetch it. Without it, and when
-    /// `lookup` allows, the cover is one found by name, and a search not yet made is left in
-    /// `wanted` for `look_up`.
-    fn artwork(
-        &mut self,
-        track: &Track,
-        public_art: bool,
-        lookup: bool,
-        cx: &App,
-    ) -> Option<String> {
-        let own = public_art
-            .then(|| {
-                track
-                    .album_id
-                    .as_deref()
-                    .and_then(|album| self.cover.read(cx).large_for(album))
-                    .map(str::to_owned)
-                    .or_else(|| track.cover.clone())
-                    .filter(|cover| cover.starts_with("https://"))
-            })
-            .flatten();
-        if own.is_some() || !lookup {
-            return own;
+    /// Looks up cover art by name when the setting allows it, otherwise leaving the status without
+    /// an image. Provider art is never public enough for Discord's proxy.
+    fn artwork(&mut self, track: &Track, lookup: bool) -> Option<String> {
+        if !lookup {
+            return None;
         }
         let query = ArtworkQuery::for_track(track)?;
         match self.found.get(&query) {

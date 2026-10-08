@@ -167,9 +167,8 @@ fn blurb(biography: Option<String>) -> SharedString {
         .unwrap_or_else(|| t!("artist-about-fallback"))
 }
 
-/// Apple's biographies mark titles with `<i>` italics. Strips the tags and returns the plain
-/// text with the byte ranges to draw slanted, for `bio_text`. A tag without its partner, or
-/// one this does not know, is dropped rather than shown.
+/// Strips inline tags and returns the plain text with italic byte ranges for `bio_text`. An
+/// unmatched or unsupported tag is dropped rather than shown.
 fn rich(biography: &str) -> (SharedString, Vec<Range<usize>>) {
     let mut plain = String::with_capacity(biography.len());
     let mut italics = Vec::new();

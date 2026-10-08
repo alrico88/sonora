@@ -1,8 +1,7 @@
 # Contributing to Sonora
 
-Sonora is a native music streaming client, built with Rust and
-[GPUI](https://github.com/zed-industries/zed), streaming through
-[librespot](https://github.com/librespot-org/librespot). Linux is the platform we mainly
+Sonora is a native music player for Subsonic servers and local files, built with Rust and
+[GPUI](https://github.com/zed-industries/zed). Linux is the platform we mainly
 develop against. Windows and macOS are built by CI but usually not exercised locally except for
 platform-specific features.
 
@@ -116,11 +115,6 @@ feel free to deviate.
 
 These are the ones reviews catch most often.
 
-**Never call the Spotify Web API.** All data comes from librespot's `spclient`. Don't add `reqwest`
-calls to `api.spotify.com`, a client secret, or `rspotify`. New endpoints go on the `MusicApi` trait
-in `crates/music/src/lib.rs` and are implemented in a focused module under `music/src/spotify/`. Although most
-Spotify functionality is probably already implemented by this point anyway.
-
 **A component probably already exists.** Grep `crates/ui/src/lib.rs`, `crates/views/src/shared/cells.rs`
 and `crates/views/src/chrome/` first. Extend what's there — add a builder method to `Button` rather
 than writing an `IconButton`.
@@ -157,8 +151,8 @@ nothing.
 if Chrome::room(window, cx).fits(Room::Roomy) { … }
 ```
 
-**Network work runs on the tokio runtime, never on GPUI's executor.** Anything touching `MusicApi`,
-librespot or sockets goes inside `io.spawn`, mutations happen in `this.update`, and the returned
+**Network work runs on the tokio runtime, never on GPUI's executor.** Anything touching `MusicApi`
+or sockets goes inside `io.spawn`, mutations happen in `this.update`, and the returned
 `Task` is stored in a field — dropping it is how sign-out and navigation cancel in-flight loads.
 Never `.detach()` a data load. New network-backed features belong in a `state` entity, not a view.
 

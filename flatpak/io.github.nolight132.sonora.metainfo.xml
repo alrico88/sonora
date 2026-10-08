@@ -8,7 +8,7 @@
   </developer>
   <keywords>
     <keyword>music</keyword>
-    <keyword>spotify</keyword>
+    <keyword>subsonic</keyword>
     <keyword>audio</keyword>
     <keyword>player</keyword>
   </keywords>
@@ -26,8 +26,8 @@
 
   <description>
     <p>
-      Sonora streams Spotify and YouTube Music and plays your local files from one native
-      desktop app built with Rust and GPUI, with lyrics, artist pages, playlists, and
+      Sonora plays music from Subsonic servers and local files in one native desktop app built
+      with Rust and GPUI, with lyrics, artist pages, playlists, and
       system media controls.
     </p>
   </description>

@@ -37,19 +37,6 @@ const OPEN_COALESCE: Duration = Duration::from_millis(250);
 
 fn main() {
     memory::tune();
-    if let Some(code) = webview::probed() {
-        exit(code);
-    }
-    // The Widevine host is this executable started again by the app. It must not claim the
-    // instance socket, write the app's log file or start a runtime or a window.
-    if let Some(module) = music::drm::hosted() {
-        logging::console();
-        if let Err(error) = music::drm::host(&module) {
-            log::error!("widevine: the cdm host failed: {error:#}");
-            exit(1);
-        }
-        return;
-    }
     logging::init();
 
     let args: Vec<String> = std::env::args()
@@ -62,16 +49,14 @@ fn main() {
         single::Instance::Running => return,
         single::Instance::Failed => exit(1),
     }
-    // Only a lone spotify:/web link overrides the startup screen; one or more file paths from
+    // Only a lone music link overrides the startup screen; one or more file paths from
     // an "Open With" launch are handled after state exists, once the window loop is running.
     let opened_start = match args.as_slice() {
         [single] => router::destination(single),
         _ => None,
     };
 
-    // Two rustls backends are compiled in: librespot, oauth2 and ytmusic still ask for ring,
-    // while reqwest 0.13 and opensubsonic ask for aws-lc-rs. rustls refuses to guess between
-    // them, so one is picked here. A second install only means another crate got there first.
+    // Select the rustls backend before any network clients are created.
     rustls::crypto::ring::default_provider()
         .install_default()
         .ok();
@@ -99,13 +84,8 @@ fn main() {
         }
 
         let database = storage::Database::standard();
-        let providers: Vec<Arc<dyn music::MusicProvider>> = vec![
-            Arc::new(music::spotify::SpotifyProvider::from_env()),
-            Arc::new(music::apple::AppleProvider::new()),
-            Arc::new(music::youtube::YouTubeProvider::new()),
-            Arc::new(music::subsonic::SubsonicProvider::new()),
-            Arc::new(music::deezer::DeezerProvider::new()),
-        ];
+        let providers: Vec<Arc<dyn music::MusicProvider>> =
+            vec![Arc::new(music::subsonic::SubsonicProvider::new())];
         let local_provider: Arc<dyn music::MusicProvider> =
             Arc::new(music::local::LocalProvider::new(
                 dirs::cache_dir()
@@ -116,8 +96,6 @@ fn main() {
             ));
         let lyrics: Vec<Arc<dyn LyricsProvider>> = vec![
             Arc::new(music::local::LocalLyrics),
-            Arc::new(music::spotify::SpotifyLyrics::from_env()),
-            Arc::new(music::youtube::YouTubeLyrics::new()),
             Arc::new(music::binimum::Binimum::new()),
             Arc::new(music::musixmatch::Musixmatch::new()),
             Arc::new(music::lrclib::LrcLib::new()),
@@ -300,14 +278,12 @@ fn open_window(cx: &mut App) {
     let Sonora {
         session,
         cover: _,
-        drm: _,
         library,
         history: _,
         lyrics: _,
         network: _,
         pins: _,
         playback,
-        potoken: _,
         queue,
         scan: _,
         scrobbling: _,

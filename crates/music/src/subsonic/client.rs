@@ -753,11 +753,7 @@ impl MusicApi for SubsonicClient {
         if playlist.cover.is_none() {
             playlist.cover = tracks.iter().find_map(|track| track.cover.clone());
         }
-        Ok(PlaylistDetail {
-            playlist,
-            tracks,
-            continuation: None,
-        })
+        Ok(PlaylistDetail { playlist, tracks })
     }
 
     async fn playlist_tracks(&self, playlist_id: &str) -> Result<Vec<Track>> {

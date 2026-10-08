@@ -17,7 +17,7 @@ pub enum Instance {
     Failed,
 }
 
-/// `args` is every non-flag command-line argument of this launch: a lone `spotify:`/web link, or
+/// `args` is every non-flag command-line argument of this launch: a lone `sonora://` link, or
 /// one or more file paths from an "Open With" selection.
 pub fn claim(args: &[String], sender: UnboundedSender<Vec<String>>) -> Instance {
     let name = match SOCKET.to_ns_name::<GenericNamespaced>() {

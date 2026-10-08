@@ -4,7 +4,6 @@ use ui::{ActiveTheme as _, Filter, FilterChange, FlagAxis};
 use gpui::{AnyElement, App, Entity, TextAlign};
 use i18n::t;
 use music::Playlist;
-use router::Destination;
 use state::{Library, LibraryPart, Origin, Playback, Shelf};
 use ui::rank::{ESSENTIAL, HANDY, NICE, SPARE};
 use ui::{Cell, ColumnSpec, Menu, Pin, TableSource, Width};
@@ -199,16 +198,7 @@ impl TableSource for PlaylistSource {
         match cell.field {
             PlaylistField::Cover => cells::artwork(&cell, playlist.cover.clone()),
             PlaylistField::Name => cells::dim(&cell, playlist.name.clone(), theme.foreground),
-            PlaylistField::Owner => match playlist.owner_id.is_empty() {
-                true => cells::dim(&cell, playlist.owner.clone(), muted),
-                false => cells::link(
-                    &cell,
-                    "playlist-owner",
-                    playlist.owner.clone(),
-                    muted,
-                    Destination::User(playlist.owner_id.clone().into()),
-                ),
-            },
+            PlaylistField::Owner => cells::dim(&cell, playlist.owner.clone(), muted),
             PlaylistField::TrackCount => {
                 cells::dim(&cell, format!("{}", playlist.track_count), muted)
             }

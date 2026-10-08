@@ -2,10 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use gpui::{App, Context, Entity, SharedString, Task};
-use music::{Album, MediaKind, MusicApi, Page, Pages, Playlist, SavedArtist, Shape, Track};
+use music::{Album, MusicApi, Playlist, SavedArtist, Shape, Track};
 
 use crate::snapshot::{Kind, Remembered, Snapshots};
 use crate::{Io, Network, Outcome, Session, SessionEvent, Sonora, Target, Toasts, join, mosaic};
@@ -421,10 +421,6 @@ fn take<T>(
 
 /// Whether the provider lists `uri` as pinned. A provider may leave unpinned items out
 /// entirely, so a missing item reads as unpinned.
-fn holds_pin(items: &[music::PinTarget], uri: &str) -> bool {
-    items.iter().any(|item| item.uri == uri && item.pinned)
-}
-
 impl Library {
     fn toggle_saved<S: Savable>(&mut self, mut item: S, cx: &mut Context<Self>) {
         let Some(id) = item.id().map(str::to_owned) else {
@@ -453,7 +449,7 @@ impl Library {
             this.update(cx, |this, cx| {
                 S::requests(this).remove(&answered);
                 match result {
-                    Ok(()) if saved => S::admit(this, item, cx),
+                    Ok(()) if saved => {}
                     Ok(()) => {}
                     Err(error) => {
                         let name = match &previous {
@@ -491,9 +487,6 @@ trait Savable: Clone + Send + Sized + 'static {
     fn saved_now(library: &Library, id: &str) -> Option<Self>;
     fn requests(library: &mut Library) -> &mut HashMap<String, Task<()>>;
     fn hold(library: &mut Library, item: Self, saved: bool);
-    /// What else the shelf does once the provider has agreed to the favorite. Nothing for
-    /// most kinds.
-    fn admit(_library: &mut Library, _item: Self, _cx: &mut Context<Library>) {}
     fn ask(
         client: Arc<dyn MusicApi>,
         id: String,
@@ -535,26 +528,6 @@ impl Savable for Track {
 
     fn hold(library: &mut Library, item: Self, saved: bool) {
         library.set_saved(item, saved);
-    }
-
-    /// Puts the track onto the shelf's own pages where the library is a set apart from the
-    /// favorites. Apple Music, the one such provider, adds a favorited song to the library
-    /// itself, so the Songs page lists it without a reload.
-    fn admit(library: &mut Library, track: Self, cx: &mut Context<Library>) {
-        let Some(id) = track.id.clone() else {
-            return;
-        };
-        let shelf = Shelf::of(&id);
-        if !library.session.read(cx).capabilities_of(shelf).library {
-            return;
-        }
-        let Some(ready) = library.held_mut(shelf).ready_mut() else {
-            return;
-        };
-        if ready.tracks.iter().any(|known| known.id == track.id) {
-            return;
-        }
-        ready.tracks.insert(0, track);
     }
 
     async fn ask(client: Arc<dyn MusicApi>, id: String, saved: bool) -> anyhow::Result<()> {
@@ -731,9 +704,6 @@ pub struct Library {
     session: Entity<Session>,
     io: Io,
     playlist_task: Option<Task<()>>,
-    pin_targets_task: Option<Task<()>>,
-    pin_task: Option<Task<()>>,
-    pin_targets: Option<Vec<music::PinTarget>>,
     pending: HashMap<String, Task<()>>,
     pending_albums: HashMap<String, Task<()>>,
     pending_artists: HashMap<String, Task<()>>,
@@ -741,8 +711,6 @@ pub struct Library {
     /// last reported. `0` is an explicit clear.
     ratings: HashMap<String, u8>,
     rating_pending: HashMap<String, Task<()>>,
-    /// Tracks and albums on their way into or out of the provider's own library, by id.
-    pending_library: HashMap<String, Task<()>>,
     contents: HashMap<String, HashSet<String>>,
     hidden_local_tracks: HashSet<String>,
     reading: HashMap<String, Task<()>>,
@@ -760,24 +728,16 @@ impl Library {
     ) -> Self {
         cx.subscribe(&session, |this, session, event, cx| match event {
             SessionEvent::SignedIn => {
-                this.pin_task = None;
                 if !session.read(cx).authenticated() {
-                    this.pin_targets_task = None;
-                    this.pin_targets = None;
                     this.held_mut(Shelf::Streaming).clear();
                     cx.notify();
                     return;
                 }
-                this.pin_targets = None;
-                this.sync_pin_targets(cx);
                 this.prime(Shelf::Streaming, cx);
                 this.load(Shelf::Streaming, cx);
             }
             SessionEvent::SignedOut => {
                 this.forget(Shelf::Streaming, cx);
-                this.pin_task = None;
-                this.pin_targets_task = None;
-                this.pin_targets = None;
                 this.contents.clear();
                 this.reading.clear();
                 this.mosaics.clear();
@@ -785,16 +745,10 @@ impl Library {
                 this.pending.clear();
                 this.pending_albums.clear();
                 this.pending_artists.clear();
-                this.pending_library.clear();
                 this.ratings.clear();
                 this.rating_pending.clear();
                 this.held_mut(Shelf::Streaming).clear();
                 cx.notify();
-            }
-            SessionEvent::Reconnected => {
-                if matches!(this.held(Shelf::Streaming).state, LibraryState::Failed(_)) {
-                    this.load(Shelf::Streaming, cx);
-                }
             }
             SessionEvent::LocalChanged => {
                 this.hidden_local_tracks.clear();
@@ -814,15 +768,11 @@ impl Library {
             session,
             io,
             playlist_task: None,
-            pin_targets_task: None,
-            pin_task: None,
-            pin_targets: None,
             pending: HashMap::new(),
             pending_albums: HashMap::new(),
             pending_artists: HashMap::new(),
             ratings: HashMap::new(),
             rating_pending: HashMap::new(),
-            pending_library: HashMap::new(),
             contents: HashMap::new(),
             hidden_local_tracks: HashSet::new(),
             reading: HashMap::new(),
@@ -957,121 +907,6 @@ impl Library {
             Shelf::Streaming => session.provider_slug(),
             Shelf::Local => Some(session.local_slug()),
         }
-    }
-
-    pub fn pin_targets(&self) -> Option<&[music::PinTarget]> {
-        self.pin_targets.as_deref()
-    }
-
-    pub fn pin_pending(&self) -> bool {
-        self.pin_task.is_some()
-    }
-
-    /// Changes the provider's own pin for `uri` and calls `done` with whether it stuck. A second
-    /// change replaces the one in flight, so the last one wins and only its `done` runs. A pin
-    /// the provider turns away for being past its limit or outside the library counts as stuck
-    /// too, since Sonora keeps the pin itself and the sidebar has no limit of its own.
-    pub fn set_pinned(
-        &mut self,
-        uri: String,
-        pinned: bool,
-        done: impl FnOnce(bool, &mut App) + 'static,
-        cx: &mut Context<Self>,
-    ) {
-        if self
-            .pin_targets
-            .as_ref()
-            .is_some_and(|items| holds_pin(items, &uri) == pinned)
-        {
-            return;
-        }
-        let Some(client) = self.session.read(cx).client_of(Shelf::Streaming) else {
-            return;
-        };
-        // Keep a polling response from overwriting the result of this mutation.
-        self.pin_targets_task = None;
-        let io = self.io.clone();
-        self.pin_task = Some(cx.spawn(async move |this, cx| {
-            let result = join(io.spawn(async move {
-                let result = client.set_pinned(&uri, pinned).await?;
-                if result != music::PinOutcome::Updated {
-                    return Ok((result, None));
-                }
-                let items = client.pin_targets().await?;
-                anyhow::ensure!(
-                    items
-                        .as_ref()
-                        .is_some_and(|items| holds_pin(items, &uri) == pinned),
-                    "the provider did not confirm the updated library pin"
-                );
-                Ok((result, items))
-            }))
-            .await;
-            this.update(cx, |this, cx| {
-                this.pin_task = None;
-                match result {
-                    Ok((music::PinOutcome::Updated, items)) => {
-                        this.pin_targets = items;
-                        done(true, cx);
-                    }
-                    Ok((music::PinOutcome::LimitReached, _)) => {
-                        log::debug!(
-                            "library: the provider's pin limit is reached, pinning locally"
-                        );
-                        done(true, cx);
-                    }
-                    Ok((music::PinOutcome::Outside, _)) => {
-                        log::debug!("library: the item is not in the library, pinning locally");
-                        done(true, cx);
-                    }
-                    Err(error) => {
-                        log::warn!("library: cannot update the library pin: {error:#}");
-                        Toasts::show(Outcome::Failed, "toast-library-pin-failed", cx);
-                        done(false, cx);
-                    }
-                }
-                this.sync_pin_targets(cx);
-                cx.notify();
-            })
-            .ok();
-        }));
-        cx.notify();
-    }
-
-    fn sync_pin_targets(&mut self, cx: &mut Context<Self>) {
-        if self.pin_pending() {
-            return;
-        }
-        self.pin_targets_task = None;
-        let Some(client) = self.session.read(cx).client_of(Shelf::Streaming) else {
-            return;
-        };
-        let io = self.io.clone();
-        self.pin_targets_task = Some(cx.spawn(async move |this, cx| {
-            loop {
-                let client = client.clone();
-                let loaded = join(io.spawn(async move { client.pin_targets().await })).await;
-                if this
-                    .update(cx, |this, cx| match loaded {
-                        Ok(items) if items != this.pin_targets => {
-                            this.pin_targets = items;
-                            cx.notify();
-                        }
-                        Ok(_) => {}
-                        Err(error) => {
-                            log::warn!("library: cannot read the provider's pins: {error:#}");
-                            crate::noted(&error, cx);
-                        }
-                    })
-                    .is_err()
-                {
-                    break;
-                }
-                cx.background_executor()
-                    .timer(Duration::from_secs(60))
-                    .await;
-            }
-        }));
     }
 
     fn held(&self, shelf: Shelf) -> &Held {
@@ -1276,113 +1111,6 @@ impl Library {
             }
             self.toggle_saved(track, cx);
         }
-    }
-
-    /// Whether a track or album is in the shelf's own library, apart from its favorites. Only
-    /// a `Capabilities::library` provider draws the distinction, and there the pages list the
-    /// library, so this is what they list.
-    pub fn in_library(&self, id: &str) -> bool {
-        let state = &self.held(Shelf::of(id)).state;
-        state
-            .tracks()
-            .iter()
-            .any(|track| track.id.as_deref() == Some(id))
-            || state.albums().iter().any(|album| album.id == id)
-    }
-
-    pub fn pending_library(&self, id: &str) -> bool {
-        self.pending_library.contains_key(id)
-    }
-
-    pub fn set_track_in_library(
-        &mut self,
-        mut track: Track,
-        present: bool,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(id) = track.id.clone() else {
-            return;
-        };
-        let name = track.name.clone();
-        track.stamp_added();
-        self.set_in_library(id, MediaKind::Track, name, present, cx, move |ready| {
-            ready.tracks.retain(|known| known.id != track.id);
-            if present {
-                ready.tracks.insert(0, track);
-            }
-        });
-    }
-
-    pub fn set_album_in_library(
-        &mut self,
-        mut album: Album,
-        present: bool,
-        cx: &mut Context<Self>,
-    ) {
-        let id = album.id.clone();
-        let name = album.name.clone();
-        album.stamp_added();
-        self.set_in_library(id, MediaKind::Album, name, present, cx, move |ready| {
-            ready.albums.retain(|known| known.id != album.id);
-            if present {
-                ready.albums.insert(0, album);
-            }
-        });
-    }
-
-    /// Asks the provider to put one item into its library or take it out, and applies
-    /// `place` to the shelf's pages once it agrees, so they follow without a reload. A second
-    /// ask about the same item while the first is out is dropped.
-    fn set_in_library(
-        &mut self,
-        id: String,
-        kind: MediaKind,
-        name: String,
-        present: bool,
-        cx: &mut Context<Self>,
-        place: impl FnOnce(&mut Ready) + 'static,
-    ) {
-        if self.pending_library.contains_key(&id) {
-            return;
-        }
-        let shelf = Shelf::of(&id);
-        let Some(client) = self.session.read(cx).client_of(shelf) else {
-            return;
-        };
-        let asked = id.clone();
-        let answered = id.clone();
-        let io = self.io.clone();
-        let task = cx.spawn(async move |this, cx| {
-            let result =
-                join(io.spawn(async move { client.set_in_library(kind, &asked, present).await }))
-                    .await;
-            this.update(cx, |this, cx| {
-                this.pending_library.remove(&answered);
-                match result {
-                    Ok(()) => {
-                        if let Some(ready) = this.held_mut(shelf).ready_mut() {
-                            place(ready);
-                        }
-                        let done = match present {
-                            true => "toast-library-added",
-                            false => "toast-library-removed",
-                        };
-                        Toasts::show(Outcome::Done, done, cx);
-                    }
-                    Err(error) => {
-                        log::warn!("library: cannot change the library: {error:#}");
-                        let failed = match present {
-                            true => "toast-library-add-failed",
-                            false => "toast-library-remove-failed",
-                        };
-                        Toasts::linked(Outcome::Failed, failed, name, None, cx);
-                    }
-                }
-                cx.notify();
-            })
-            .ok();
-        });
-        self.pending_library.insert(id, task);
     }
 
     pub fn saved_album(&self, album_id: &str) -> bool {
@@ -1974,12 +1702,6 @@ impl Library {
 
     /// Forgets a playlist on the shelf and in the pin snapshot, notifying listeners of its removal.
     fn forget_playlist(&mut self, id: &str, cx: &mut Context<Self>) {
-        if let Some(targets) = self.pin_targets.as_mut() {
-            targets.retain(|target| {
-                target.kind != music::PinTargetKind::Playlist
-                    || target.uri.rsplit_once(':').map(|(_, id)| id) != Some(id)
-            });
-        }
         cx.emit(LibraryEvent::PlaylistGone(id.to_owned()));
         self.drop_playlist(id, cx);
     }
@@ -2031,9 +1753,6 @@ impl Library {
     }
 
     pub fn refresh(&mut self, shelf: Shelf, cx: &mut Context<Self>) {
-        if shelf == Shelf::Streaming {
-            self.sync_pin_targets(cx);
-        }
         self.load(shelf, cx);
     }
 
@@ -2080,16 +1799,14 @@ impl Library {
         let albums = client.clone();
         let artists = client.clone();
         let mut tasks = vec![
-            self.stream(
-                shelf,
-                LibraryPart::Tracks,
+            self.fetch(
                 async move {
                     match shape {
-                        Shape::Saved => tracks.saved_tracks_paged().await,
-                        Shape::Catalog => tracks.all_tracks_paged().await,
+                        Shape::Saved => tracks.saved_tracks().await,
+                        Shape::Catalog => tracks.all_tracks().await,
                     }
                 },
-                Landed::Tracks,
+                move |this, loaded, cx| this.land(shelf, Landed::Tracks(loaded), cx),
                 cx,
             ),
             self.fetch(
@@ -2097,28 +1814,24 @@ impl Library {
                 move |this, loaded, cx| this.land(shelf, Landed::Playlists(loaded), cx),
                 cx,
             ),
-            self.stream(
-                shelf,
-                LibraryPart::Albums,
+            self.fetch(
                 async move {
                     match shape {
-                        Shape::Saved => albums.saved_albums_paged().await,
-                        Shape::Catalog => albums.all_albums_paged().await,
+                        Shape::Saved => albums.saved_albums().await,
+                        Shape::Catalog => albums.all_albums().await,
                     }
                 },
-                Landed::Albums,
+                move |this, loaded, cx| this.land(shelf, Landed::Albums(loaded), cx),
                 cx,
             ),
-            self.stream(
-                shelf,
-                LibraryPart::Artists,
+            self.fetch(
                 async move {
                     match shape {
-                        Shape::Saved => artists.saved_artists_paged().await,
-                        Shape::Catalog => artists.all_artists_paged().await,
+                        Shape::Saved => artists.saved_artists().await,
+                        Shape::Catalog => artists.all_artists().await,
                     }
                 },
-                Landed::Artists,
+                move |this, loaded, cx| this.land(shelf, Landed::Artists(loaded), cx),
                 cx,
             ),
         ];
@@ -2156,75 +1869,6 @@ impl Library {
         cx.spawn(async move |this, cx| {
             let loaded = join(io.spawn(work)).await;
             this.update(cx, |this, cx| apply(this, loaded, cx)).ok();
-        })
-    }
-
-    /// Loads one part a page at a time. A part with nothing primed shows each page as it lands
-    /// and learns how many rows to expect from the first, so a long library reads from its first
-    /// hundred rows rather than its last. A part a snapshot primed holds its pages back and swaps
-    /// them in together once the last one lands, so the snapshot never shrinks to one page. A
-    /// page that fails ends the part with that failure, and a primed part keeps its snapshot.
-    fn stream<T, R>(
-        &self,
-        shelf: Shelf,
-        part: LibraryPart,
-        work: R,
-        wrap: fn(anyhow::Result<Vec<T>>) -> Landed,
-        cx: &mut Context<Self>,
-    ) -> Task<()>
-    where
-        R: Future<Output = anyhow::Result<Pages<T>>> + Send + 'static,
-        T: Send + 'static,
-    {
-        let io = self.io.clone();
-        cx.spawn(async move |this, cx| {
-            let mut pages = match join(io.spawn(work)).await {
-                Ok(pages) => pages,
-                Err(error) => {
-                    this.update(cx, |this, cx| this.land(shelf, wrap(Err(error)), cx))
-                        .ok();
-                    return;
-                }
-            };
-            let mut held_back = Vec::new();
-            while let Some(page) = pages.recv().await {
-                let landed = match page {
-                    Ok(Page { total, items }) => {
-                        let placed = this.update(cx, |this, cx| {
-                            let held = this.held_mut(shelf);
-                            if held.stale.contains(&part) {
-                                return Some(items);
-                            }
-                            if let Some(total) = total {
-                                held.expected.insert(part, total);
-                            }
-                            extend(&mut held.state, wrap(Ok(items)));
-                            cx.notify();
-                            None
-                        });
-                        match placed {
-                            Ok(Some(items)) => held_back.extend(items),
-                            Ok(None) => {}
-                            Err(_) => return,
-                        }
-                        continue;
-                    }
-                    Err(error) => wrap(Err(error)),
-                };
-                this.update(cx, |this, cx| this.land(shelf, landed, cx))
-                    .ok();
-                return;
-            }
-            this.update(cx, |this, cx| {
-                let held = this.held_mut(shelf);
-                held.expected.remove(&part);
-                shed(&mut held.state, &mut held.stale, part);
-                extend(&mut held.state, wrap(Ok(held_back)));
-                settle(&mut held.state, &mut held.awaited, part, shelf.fatal());
-                this.keep(shelf, Kind::Listed, part, cx);
-                cx.notify();
-            })
-            .ok();
         })
     }
 

@@ -209,7 +209,6 @@ pub enum Destination {
     Song(SharedString),
     Playlist(SharedString),
     Artist(SharedString),
-    User(SharedString),
     Genre(SharedString),
     /// A genre of the library's own songs, by name, rather than one of the provider's.
     LibraryGenre(SharedString),

@@ -3,7 +3,6 @@ mod catalog;
 mod cover;
 mod detail;
 mod discord;
-mod drm;
 mod genre;
 mod history;
 mod home;
@@ -14,8 +13,6 @@ mod mosaic;
 mod network;
 mod pins;
 mod playback;
-mod potoken;
-mod profile;
 mod queue;
 mod remote;
 mod scan;
@@ -36,7 +33,6 @@ mod window_shape;
 pub use artist::{ArtistDetail, ArtistDetailEvent};
 pub use cover::Cover;
 pub use detail::{Collection, Detail, Header};
-pub use drm::{CdmState, Drm};
 pub use genre::{GenreDetails, Genres, ShelfGenre, ShelfGenres};
 pub use history::{History, HistoryState};
 pub use home::Home;
@@ -48,7 +44,6 @@ pub use lyrics::{Lyrics, LyricsState};
 pub use network::{Network, Reconnected};
 pub use pins::{PinSort, Pins};
 pub use playback::{Origin, Playback, PlaybackState, Repeat, Sleep, Whence};
-pub use profile::Profile;
 pub use queue::{Named, Queue, Resume, Stub};
 pub use remote::{Remote, attach as attach_remote};
 pub use scan::Scan;
@@ -165,16 +160,12 @@ pub(crate) fn settled<T>(result: Result<T>, cx: &mut gpui::App) -> std::result::
 pub struct Sonora {
     pub session: Entity<Session>,
     pub cover: Entity<Cover>,
-    pub drm: Entity<Drm>,
     pub library: Entity<Library>,
     pub history: Entity<History>,
     pub lyrics: Entity<Lyrics>,
     pub network: Entity<Network>,
     pub pins: Entity<Pins>,
     pub playback: Entity<Playback>,
-    /// The window that mints YouTube's proof-of-origin token. Nothing reads it; it is held so
-    /// that it keeps ticking.
-    pub potoken: Entity<potoken::PoToken>,
     pub queue: Entity<Queue>,
     pub scan: Entity<Scan>,
     pub scrobbling: Entity<Scrobbling>,
@@ -254,33 +245,22 @@ pub fn init(
         )
     });
     let cover = cx.new(|cx| Cover::new(session.clone(), playback.clone(), io.clone(), cx));
-    let drm = cx.new(|cx| Drm::new(session.clone(), io.clone(), cx));
     let updates = cx.new(|cx| Updates::new(settings.clone(), io.clone(), cx));
     let usage = cx.new(|cx| Usage::new(session.clone(), database, io.clone(), cx));
     let pins = cx.new(|cx| Pins::new(settings.clone(), library.clone(), session.clone(), cx));
     let shelf_genres = cx.new(|cx| ShelfGenres::new(library.clone(), cx));
-    let potoken = potoken::attach(cx);
     let wake = cx.new(|cx| Wake::new(settings.clone(), playback.clone(), io.clone(), cx));
-    discord::attach(
-        playback.clone(),
-        settings.clone(),
-        session.clone(),
-        cover.clone(),
-        io,
-        cx,
-    );
+    discord::attach(playback.clone(), settings.clone(), session.clone(), io, cx);
 
     cx.set_global(Sonora {
         session,
         cover,
-        drm,
         library,
         history,
         lyrics,
         network,
         pins,
         playback,
-        potoken,
         queue,
         scan,
         scrobbling,

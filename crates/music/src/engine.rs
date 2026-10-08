@@ -1,17 +1,14 @@
 //! One playback engine, for every provider whose tracks are a file to decode.
 //!
-//! Two threads share the work the way the Spotify path does: a tokio thread fetches, and one
+//! Two threads share the work: a tokio thread fetches, and one
 //! audio thread decodes and feeds [`crate::sink::Paced`]. Neither the audio callback nor the
 //! runtime ever waits on the network, so a track starts as soon as its first seconds are in.
 //! The engine owns everything that is the same whoever the provider is: the queue of commands,
 //! the preload, the gapless join, where a position is reported from, and what a lost output
 //! device does.
 //!
-//! A provider supplies [`Fetch`]: how to get a track and how to open a decoder over it. Every
-//! provider but Spotify does, whose decoding librespot owns. Local reads a file from disk,
-//! YouTube asks for the file a range at a time, Subsonic hands over a plain response, Deezer
-//! decrypts Blowfish stripes as they arrive, and Apple Music indexes CENC fragments and decrypts
-//! each sample through a CDM as the decoder reaches it.
+//! A provider supplies [`Fetch`]: how to get a track and how to open a decoder over it. Subsonic
+//! streams a plain response, while local reads a file from disk.
 //!
 //! Loudness normalisation lives here too. A provider only reports how loud a track is, and the
 //! engine decides what gain that earns.
@@ -33,8 +30,7 @@ use crate::{PlaybackConfig, PlaybackEvent, PlaybackEvents, Player};
 /// How many frames the decoder hands over at a time. Small enough that a skip is heard at once,
 /// large enough that the queue is not rebuilt for every few samples.
 const CHUNK: usize = 4096;
-/// The level normalisation brings every track to, in LUFS. Spotify and YouTube both play at
-/// about this level, so a track sounds as loud here whichever service it came from.
+/// The level normalisation brings every track to, in LUFS.
 const TARGET_LUFS: f32 = -14.0;
 /// The level ReplayGain 2.0 measures its gain against, in LUFS.
 const REPLAYGAIN_LUFS: f32 = -18.0;
@@ -95,12 +91,6 @@ pub trait Fetch: Send + Sync + 'static {
         None
     }
 
-    /// Whether a failed load means the listener has to sign in. The engine reports that as
-    /// gated rather than as the track being unavailable.
-    fn gated(&self, _error: &anyhow::Error) -> bool {
-        false
-    }
-
     /// Resolves once the whole track has arrived, or its download has ended some other way.
     /// The engine reports it so the next track can be fetched without taking bandwidth from
     /// this one. The default answers at once, which suits a track that is already on disk.
@@ -109,14 +99,6 @@ pub trait Fetch: Send + Sync + 'static {
     /// Opens a decoder placed at `at`. `None` means the track cannot be played, which the
     /// engine reports as unavailable.
     fn open(&self, id: &str, loaded: &Self::Loaded, at: Duration) -> Option<Self::Source>;
-
-    /// Whether a seek opens a second decoder at the target rather than moving the running one.
-    ///
-    /// A fragmented stream has no index for a decoder to jump around in: asking one to seek
-    /// leaves it producing nothing, which looks exactly like a track that ended.
-    fn reopen_to_seek(&self) -> bool {
-        false
-    }
 }
 
 /// Starts an engine for `fetch`. The pair it hands back is what a `PlaybackFactory` returns.
@@ -508,11 +490,9 @@ async fn engine_loop<F: Fetch>(
                             awaited = None;
                             inflight = None;
                             announcing = None;
-                            let refusal = match fetch.gated(&error) {
-                                true => PlaybackEvent::Gated,
-                                false => PlaybackEvent::Unavailable { id: Some(id) },
-                            };
-                            events.send(refusal).ok();
+                            events
+                                .send(PlaybackEvent::Unavailable { id: Some(id) })
+                                .ok();
                         }
                         continue;
                     }
@@ -694,8 +674,6 @@ fn spawn<F: Fetch>(
 /// The track the audio thread is decoding, and where its samples land in real time.
 struct Playing<F: Fetch> {
     id: String,
-    /// Kept so a seek can open a second decoder over the same download.
-    loaded: F::Loaded,
     source: F::Source,
     channels: u16,
     rate: u32,
@@ -724,7 +702,6 @@ impl<F: Fetch> Playing<F> {
             id: id.to_owned(),
             channels: source.channels().get(),
             rate: source.sample_rate().get(),
-            loaded,
             source,
             base: at,
             offset,
@@ -942,29 +919,11 @@ fn audio_loop<F: Fetch>(
                 }
                 Job::Seek(position) => {
                     let Some(held) = &mut current else { continue };
-                    match fetch.reopen_to_seek() {
-                        // A second decoder over the same download. Whatever is lined up behind
-                        // this track is still what follows it; only the end it was waiting for
-                        // has moved.
-                        true => {
-                            let (id, loaded) = (held.id.clone(), held.loaded.clone());
-                            match Playing::open(fetch.as_ref(), &id, loaded, position, 0, normalise)
-                            {
-                                Some(fresh) => current = Some(fresh),
-                                None => {
-                                    log::warn!("playback: cannot seek {id}");
-                                    continue;
-                                }
-                            }
-                        }
-                        false => {
-                            if let Err(error) = held.source.try_seek(position) {
-                                log::warn!("playback: cannot seek {}: {error}", held.id);
-                            }
-                            held.base = position;
-                            held.offset = 0;
-                        }
+                    if let Err(error) = held.source.try_seek(position) {
+                        log::warn!("playback: cannot seek {}: {error}", held.id);
                     }
+                    held.base = position;
+                    held.offset = 0;
                     joining = None;
                     written = 0;
                     heard = current.as_ref().map(Playing::mark);

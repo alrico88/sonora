@@ -1,33 +1,24 @@
-pub mod apple;
 pub mod artwork;
 mod audio;
 pub mod binimum;
 pub mod credentials;
-pub mod deezer;
-pub mod drm;
 pub mod engine;
 pub mod equalizer;
 pub mod escape;
 pub mod kugou;
-#[cfg(test)]
-mod live_tests;
 pub mod local;
 pub mod lrclib;
 pub mod lyrics;
 mod models;
 pub mod musixmatch;
 pub mod netease;
-pub mod potoken;
 pub mod progress;
 pub mod scrobble;
 mod sink;
 mod spectrum;
-pub mod spotify;
 mod stream;
 pub mod subsonic;
-mod trim;
 pub mod trouble;
-pub mod youtube;
 
 use std::collections::HashMap;
 use std::num::NonZero;
@@ -43,11 +34,10 @@ use time::{Month, OffsetDateTime};
 
 pub use equalizer::Equalizer;
 pub use models::{
-    Album, AlbumCatalogue, AlbumDetail, Artist, ArtistCatalogue, ArtistProfile, ArtistRef,
-    Contributor, Credit, Genre, GenreDetail, GenreItem, GenreSection, HomeFeed, Lyrics, LyricsHit,
-    LyricsLane, LyricsLine, LyricsQuery, LyricsWord, PinOutcome, PinTarget, PinTargetKind,
-    Playlist, PlaylistDetail, ReleaseType, RomanizedText, SavedArtist, Track, TrackKey, TrackTags,
-    UserDetail, UserProfile, Voice, WritingSystem,
+    Album, AlbumCatalogue, AlbumDetail, Artist, ArtistProfile, ArtistRef, Contributor, Credit,
+    Genre, GenreDetail, GenreItem, GenreSection, HomeFeed, Lyrics, LyricsHit, LyricsLane,
+    LyricsLine, LyricsQuery, LyricsWord, Playlist, PlaylistDetail, ReleaseType, RomanizedText,
+    SavedArtist, Track, TrackKey, TrackTags, UserProfile, Voice, WritingSystem,
 };
 pub use spectrum::Spectrum;
 
@@ -99,31 +89,10 @@ pub enum Report {
 
 #[async_trait]
 pub trait MusicApi: Send + Sync {
-    fn alive(&self) -> bool {
-        true
-    }
-
     fn share_url(&self, kind: MediaKind, id: &str) -> Option<String>;
     async fn profile(&self) -> Result<UserProfile>;
 
-    async fn user(&self, _user_id: &str) -> Result<UserDetail> {
-        anyhow::bail!("user profiles are not supported")
-    }
-
     async fn artist(&self, artist_id: &str) -> Result<Artist>;
-
-    /// The rest of an artist page, fetched once `artist` has put the overview up: the whole
-    /// discography and the popular tracks that only the discography can rank. `known` is the
-    /// top tracks already on the page, so the provider can rank around them. A provider whose
-    /// `artist` already answers with everything leaves the default, which is nothing more to
-    /// fetch.
-    async fn artist_catalogue(
-        &self,
-        _artist_id: &str,
-        _known: &[Track],
-    ) -> Result<ArtistCatalogue> {
-        Ok(ArtistCatalogue::default())
-    }
 
     async fn artist_profile(&self, artist_id: &str) -> Result<ArtistProfile>;
     async fn artist_images(&self, ids: Vec<String>) -> Result<HashMap<String, String>>;
@@ -132,19 +101,9 @@ pub trait MusicApi: Send + Sync {
     /// library; on a `Shape::Catalog` one it only feeds the hearts and the favorites filter.
     async fn saved_tracks(&self) -> Result<Vec<Track>>;
 
-    /// The favorites a page at a time, for a library page that shows its first rows while the
-    /// rest arrive. A provider that lists in one go leaves the default, which is one page.
-    async fn saved_tracks_paged(&self) -> Result<Pages<Track>> {
-        Ok(whole(self.saved_tracks().await?))
-    }
-
     /// Every track the provider has. Only a `Shape::Catalog` provider answers.
     async fn all_tracks(&self) -> Result<Vec<Track>> {
         Ok(Vec::new())
-    }
-
-    async fn all_tracks_paged(&self) -> Result<Pages<Track>> {
-        Ok(whole(self.all_tracks().await?))
     }
 
     async fn set_track_saved(&self, track_id: &str, saved: bool) -> Result<()>;
@@ -185,49 +144,13 @@ pub trait MusicApi: Send + Sync {
         Ok(())
     }
 
-    /// Tells the provider a track has started playing, so the play counts on the provider's
-    /// own side. A provider that keeps no history keeps the default and makes no request.
-    async fn report_play(&self, _track_id: &str) -> Result<()> {
-        Ok(())
-    }
-
-    /// The tracks the account has recently played, newest first, across every device. A provider
-    /// that keeps no cross-device history keeps the default and answers with nothing.
-    async fn recently_played(&self) -> Result<Vec<Track>> {
-        Ok(Vec::new())
-    }
-
     async fn playlists(&self) -> Result<Vec<Playlist>>;
-    /// Changes the provider's own pin for `uri`, one of the uris `pin_targets` lists or
-    /// `pin_uri` builds.
-    async fn set_pinned(&self, _uri: &str, _pinned: bool) -> Result<PinOutcome> {
-        anyhow::bail!("pinning is not supported")
-    }
-
-    /// What the provider can pin, each saying whether it is pinned now. A provider may list
-    /// only its pinned items and answer `pin_uri` for the rest. `None` means the provider
-    /// keeps no pins of its own.
-    async fn pin_targets(&self) -> Result<Option<Vec<PinTarget>>> {
-        Ok(None)
-    }
-
-    /// The uri `set_pinned` takes for an item `pin_targets` does not list. `None` means only
-    /// a listed item can be pinned on the provider's side.
-    fn pin_uri(&self, _kind: PinTargetKind, _id: &str) -> Option<String> {
-        None
-    }
     async fn create_playlist(&self, name: &str) -> Result<String>;
     async fn rename_playlist(&self, playlist_id: &str, name: &str) -> Result<()>;
     async fn delete_playlist(&self, playlist_id: &str) -> Result<()>;
     async fn remove_playlist_from_library(&self, playlist_id: &str) -> Result<()>;
     async fn add_playlist_to_library(&self, playlist_id: &str) -> Result<()>;
 
-    /// Puts a track or an album into the listener's library, or takes it out, on a provider
-    /// whose library is apart from its favorites. Only a `Capabilities::library` provider
-    /// answers. An artist is never added: a library artist is one whose music is there.
-    async fn set_in_library(&self, _kind: MediaKind, _id: &str, _present: bool) -> Result<()> {
-        anyhow::bail!("this provider has no library apart from its favorites")
-    }
     async fn set_playlist_public(&self, playlist_id: &str, public: bool) -> Result<()>;
     async fn add_track_to_playlist(&self, playlist_id: &str, track_id: &str) -> Result<()>;
     async fn remove_track_from_playlist(&self, playlist_id: &str, track_id: &str) -> Result<()>;
@@ -238,28 +161,12 @@ pub trait MusicApi: Send + Sync {
         Ok(Vec::new())
     }
 
-    async fn saved_albums_paged(&self) -> Result<Pages<Album>> {
-        Ok(whole(self.saved_albums().await?))
-    }
-
-    async fn all_albums_paged(&self) -> Result<Pages<Album>> {
-        Ok(whole(self.all_albums().await?))
-    }
-
     async fn set_album_saved(&self, album_id: &str, saved: bool) -> Result<()>;
     async fn saved_artists(&self) -> Result<Vec<SavedArtist>>;
 
     /// Every artist the provider has. Only a `Shape::Catalog` provider answers.
     async fn all_artists(&self) -> Result<Vec<SavedArtist>> {
         Ok(Vec::new())
-    }
-
-    async fn saved_artists_paged(&self) -> Result<Pages<SavedArtist>> {
-        Ok(whole(self.saved_artists().await?))
-    }
-
-    async fn all_artists_paged(&self) -> Result<Pages<SavedArtist>> {
-        Ok(whole(self.all_artists().await?))
     }
 
     async fn set_artist_saved(&self, artist_id: &str, saved: bool) -> Result<()>;
@@ -280,13 +187,6 @@ pub trait MusicApi: Send + Sync {
         Ok(AlbumCatalogue::default())
     }
     async fn playlist(&self, playlist_id: &str) -> Result<PlaylistDetail>;
-    async fn playlist_continuation(
-        &self,
-        _continuation: &str,
-    ) -> Result<(Vec<Track>, Option<String>)> {
-        anyhow::bail!("playlist pagination is not supported")
-    }
-
     async fn playlist_tracks(&self, playlist_id: &str) -> Result<Vec<Track>>;
     async fn playlist_covers(&self, playlist_id: &str, wanted: usize) -> Result<Vec<String>>;
     /// The station seeded by `track_id`, from its start or from `from`, a continuation an
@@ -311,17 +211,6 @@ pub trait MusicApi: Send + Sync {
 
     async fn home(&self) -> Result<HomeFeed> {
         Ok(HomeFeed::default())
-    }
-
-    /// The home feed as it fills, so a page draws its first shelves before its last have
-    /// arrived. Defaults to `home` delivered at once, so a provider that has the feed in one go
-    /// writes nothing.
-    async fn home_paged(&self) -> Result<Feed> {
-        Ok(at_once(self.home().await?))
-    }
-
-    async fn name_home_playlists(&self, sections: Vec<GenreSection>) -> Vec<GenreSection> {
-        sections
     }
 
     async fn genres(&self) -> Result<Vec<Genre>> {
@@ -397,8 +286,6 @@ pub enum PlaybackEvent {
     Throttled {
         id: Option<String>,
     },
-    Refused,
-    Gated,
     OutputChanged,
 }
 
@@ -469,8 +356,7 @@ pub enum Shape {
 /// What a provider can do beyond listing and playing, so a control it has no answer for is
 /// never put in front of the listener.
 ///
-/// This is about the service, not the account: something a provider simply does not have, like
-/// a station Apple Music will not list or a play count Deezer does not keep. A capability that
+/// This is about the service, not the account: something a provider simply does not have. A capability that
 /// is off hides its button, its menu item and its column, rather than showing one that fails
 /// when pressed. A provider that gains one flips a flag here and the UI follows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -484,26 +370,15 @@ pub struct Capabilities {
     /// The listener can give a track a 1–5 star rating, which a column and the player bar set
     /// through `set_track_rating`.
     pub ratings: bool,
-    /// The listener has a library apart from their favorites, which a track or an album can be
-    /// put into and taken out of through `set_in_library`. Off where the library is the
-    /// favorites, as on Spotify, and where it is fixed, as on a self-hosted server.
-    pub library: bool,
-    /// The provider keeps sidebar pins of its own, listed by `pin_targets` and changed
-    /// through `set_pinned`. Off, a pin lives in Sonora's settings alone.
-    pub pins: bool,
 }
 
 impl Capabilities {
-    /// What a full streaming service offers. A library apart from favorites is not among
-    /// them: on most services the two are one thing. We love Apple Music. Pins of the
-    /// provider's own are not either, since only Spotify and Apple Music keep any.
+    /// What a full streaming service offers.
     pub const ALL: Self = Self {
         follow_artists: true,
         radio: true,
         playcounts: true,
         ratings: false,
-        library: false,
-        pins: false,
     };
 
     /// Nothing beyond listing and playing.
@@ -512,8 +387,6 @@ impl Capabilities {
         radio: false,
         playcounts: false,
         ratings: false,
-        library: false,
-        pins: false,
     };
 }
 
@@ -528,9 +401,6 @@ pub struct ProviderSession {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SignIn {
-    Default,
-    Anonymous,
-    Secret,
     Path(Vec<PathBuf>),
     Credentials {
         server: String,
@@ -541,12 +411,8 @@ pub enum SignIn {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SignInProblem {
-    Premium,
-    Region,
     Credentials,
     Network,
-    Cancelled,
-    Refused,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -555,89 +421,14 @@ pub struct SignInFailure(pub SignInProblem);
 impl std::fmt::Display for SignInFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let reason = match self.0 {
-            SignInProblem::Premium => "the account has no Spotify Premium",
-            SignInProblem::Region => "the account is out of its home region",
-            SignInProblem::Credentials => "the stored credentials are no longer valid",
+            SignInProblem::Credentials => "the credentials are not valid",
             SignInProblem::Network => "the provider could not be reached",
-            SignInProblem::Cancelled => "authorization was cancelled in the browser",
-            SignInProblem::Refused => "Spotify refused the session",
         };
         write!(f, "{reason}")
     }
 }
 
 impl std::error::Error for SignInFailure {}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AccountChoice {
-    pub id: String,
-    pub name: String,
-    pub detail: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SignInPrompt {
-    Accounts(Vec<AccountChoice>),
-    Code { code: String, url: String },
-    Url(String),
-    Secret,
-}
-
-pub type PromptSink = Arc<dyn Fn(SignInPrompt) + Send + Sync>;
-pub type InputSource = tokio::sync::mpsc::UnboundedReceiver<String>;
-
-/// One page of a listing that arrives in pieces. `total` is how long the whole listing will
-/// be, on the pages of a provider that knows before the last one; a page that does not know
-/// carries `None`, and the count so far stands in.
-pub struct Page<T> {
-    pub total: Option<usize>,
-    pub items: Vec<T>,
-}
-
-/// A listing arriving a page at a time, in order. The channel closes after the last page, or
-/// carries the error a page broke on, after which nothing more comes. Dropping it stops the
-/// provider fetching.
-pub type Pages<T> = tokio::sync::mpsc::Receiver<Result<Page<T>>>;
-
-/// The home feed arriving a lot at a time: every message is the whole feed so far, arranged
-/// the way the provider wants it drawn, so each one can replace the last on the page. The
-/// channel closes after the last lot, or carries the error one broke on, after which nothing
-/// more comes. Dropping it stops the provider fetching.
-pub type Feed = tokio::sync::mpsc::Receiver<Result<HomeFeed>>;
-
-/// A home feed that arrived whole, as its one and only message.
-pub fn at_once(feed: HomeFeed) -> Feed {
-    let (sender, receiver) = tokio::sync::mpsc::channel(1);
-    // Room for one message was made above, so this never waits and never fails.
-    sender.try_send(Ok(feed)).ok();
-    receiver
-}
-
-/// A listing that arrived whole, as its one and only page. What a provider that lists in one
-/// go answers the paged calls with.
-pub fn whole<T: Send + 'static>(items: Vec<T>) -> Pages<T> {
-    let (sender, receiver) = tokio::sync::mpsc::channel(1);
-    let total = Some(items.len());
-    // Room for one page was made above, so this never waits and never fails.
-    sender.try_send(Ok(Page { total, items })).ok();
-    receiver
-}
-
-/// A cookie sign-in the app runs in its own browser window. `url` opens first and `landing` scopes
-/// URL-based cookie reads. The user is through once the cookies for `domain` carry one of the
-/// `proof` names. The header those cookies make is what `SignInPrompt::Secret` then receives.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct WebSignIn {
-    pub url: &'static str,
-    pub landing: &'static str,
-    pub domain: &'static str,
-    pub proof: &'static [&'static str],
-    /// A user agent the window presents instead of its default. Some providers' anti-bot
-    /// checks reject an agent that does not match the engine behind it (a Firefox string on a
-    /// WebKit window); the string must match what the backend's engine would say. Backends
-    /// whose default is already engine-consistent may ignore it.
-    pub agent: Option<&'static str>,
-}
 
 #[async_trait]
 pub trait MusicProvider: Send + Sync {
@@ -661,11 +452,6 @@ pub trait MusicProvider: Send + Sync {
     }
     fn sign_in_options(&self) -> Vec<SignIn>;
     fn stored(&self) -> bool;
-    /// Whether what is stored is an anonymous session rather than an account, so a caller
-    /// can tell the two apart. A provider without an anonymous sign-in never says yes.
-    fn stored_guest(&self) -> bool {
-        false
-    }
     fn location(&self) -> Option<String> {
         None
     }
@@ -680,31 +466,9 @@ pub trait MusicProvider: Send + Sync {
     fn listening_to(&self) -> &'static str {
         self.name()
     }
-    /// Whether this provider's tracks need the Widevine module to play. The app fetches the
-    /// module once such a provider has an account, and does not go near it otherwise.
-    fn protected(&self) -> bool {
-        false
-    }
-    /// Whether the artwork urls this provider hands out can be given to another service. A path
-    /// on disk means nothing elsewhere, and a self-hosted url carries the credentials that fetch
-    /// it, so the default is no.
-    fn public_art(&self) -> bool {
-        false
-    }
     async fn restore(&self) -> Result<Option<ProviderSession>>;
-    async fn sign_in(
-        &self,
-        method: SignIn,
-        prompt: PromptSink,
-        input: InputSource,
-    ) -> Result<ProviderSession>;
-    fn abandon(&self) {}
+    async fn sign_in(&self, method: SignIn) -> Result<ProviderSession>;
     fn sign_out(&self);
-    /// How to run `SignIn::Secret` in a browser window. `None` means the provider has no cookie
-    /// sign-in, and the app offers no `Secret` option for it.
-    fn web_sign_in(&self) -> Option<WebSignIn> {
-        None
-    }
 }
 
 /// Leniently convert an ISO8601 timestamp to unix epoch seconds. Accepts only

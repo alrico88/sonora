@@ -312,7 +312,7 @@ impl Queue {
     ) -> Self {
         cx.subscribe(&session, |this, _, event, cx| match event {
             SessionEvent::SignedOut => this.purge(cx),
-            SessionEvent::SignedIn | SessionEvent::Reconnected | SessionEvent::LocalChanged => {}
+            SessionEvent::SignedIn | SessionEvent::LocalChanged => {}
         })
         .detach();
 
@@ -1074,9 +1074,9 @@ mod tests {
         let upcoming = listing(300);
         let current = track("now");
 
-        let resume = record("spotify", &past, Some(&current), upcoming.iter(), 0);
+        let resume = record("subsonic", &past, Some(&current), upcoming.iter(), 0);
 
-        assert_eq!(resume.provider, "spotify");
+        assert_eq!(resume.provider, "subsonic");
         assert_eq!(resume.position, 0.);
         assert_eq!(resume.current.map(|stub| stub.id), Some("now".to_owned()));
         assert_eq!(resume.past.len(), 20);

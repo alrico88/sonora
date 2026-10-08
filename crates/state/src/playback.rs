@@ -18,16 +18,6 @@ type Fetch = std::pin::Pin<Box<dyn Future<Output = Result<Vec<Track>>> + Send>>;
 type Gathered =
     std::pin::Pin<Box<dyn Future<Output = Result<(Vec<Track>, Option<String>)>> + Send>>;
 
-/// Why the provider will play nothing more this session. Every later load fails the same way
-/// without asking the engine again.
-#[derive(Clone, Copy, PartialEq)]
-enum Refusal {
-    /// Spotify denied an audio key for the account.
-    Keys,
-    /// The provider streams only to a signed-in listener.
-    SignIn,
-}
-
 /// How a load came about, which decides its debounce and whether the engine may keep its queue.
 #[derive(Clone, Copy, PartialEq)]
 enum Start {
@@ -116,8 +106,7 @@ const THROTTLE_LIMIT: u8 = 6;
 const RESUME_STEP: Duration = Duration::from_secs(5);
 /// How long a pause may last before play reloads the track instead of resuming the engine. What
 /// an engine holds goes stale while paused, and resuming it plays out the queued audio and then
-/// reports the track as ended. Apple's license asks for renewal 13 minutes after it is issued,
-/// and that clock starts at the load rather than the pause, so this leaves room for a long track.
+/// reports the track as ended.
 const STALE_PAUSE: Duration = Duration::from_secs(5 * 60);
 const TAPER_DB: f32 = 50.;
 const SIMILAR_LIMIT: usize = 20;
@@ -400,7 +389,6 @@ pub struct Playback {
     /// When the engine last reported a pause. It is wall-clock time so a suspend counts toward
     /// `STALE_PAUSE`, and a clock set back counts as stale.
     paused_at: Option<SystemTime>,
-    refused: Option<Refusal>,
     /// Where the restored track resumes. Set until the engine has it ready or the user plays.
     resume_at: Option<Duration>,
     /// The seek the engine is carrying out while playing. One is in flight at a time: the clock
@@ -417,8 +405,6 @@ pub struct Playback {
     intent: Intent,
     /// Whether the engine holds the restored track paused at `resume_at`, so play is instant.
     resume_ready: bool,
-    /// Whether playback stopped on a stale session and continues once it reconnects.
-    awaiting_reconnect: bool,
     /// The position last written to settings for resuming.
     stored: Duration,
     sleep: Option<Sleep>,
@@ -442,12 +428,6 @@ impl Playback {
                 };
                 this.start_engine(playback, cx);
                 this.adopt(cx);
-            }
-            SessionEvent::Reconnected => {
-                let Some(playback) = session.read(cx).playback() else {
-                    return;
-                };
-                this.rebind(playback, cx);
             }
             SessionEvent::SignedOut => this.teardown(cx),
             SessionEvent::LocalChanged => {
@@ -509,7 +489,6 @@ impl Playback {
             failures: 0,
             throttles: 0,
             paused_at: None,
-            refused: None,
             resume_at: None,
             seek_in_flight: None,
             seek_next: None,
@@ -517,7 +496,6 @@ impl Playback {
             seek_target: None,
             intent: Intent::Pause,
             resume_ready: false,
-            awaiting_reconnect: false,
             stored: Duration::ZERO,
             sleep: None,
             sleep_task: None,
@@ -616,13 +594,6 @@ impl Playback {
             return self.failed(format!("{} has no track id", track.name), cx);
         };
         let is_local = music::is_local_id(&id);
-        if !is_local {
-            match self.refused {
-                Some(Refusal::Keys) => return self.refuse(cx),
-                Some(Refusal::SignIn) => return self.gate(cx),
-                None => {}
-            }
-        }
         if !track.playable {
             return self.failed(format!("{} is not available to stream", track.name), cx);
         }
@@ -2153,23 +2124,9 @@ impl Playback {
         self.load_from(&track, at, Start::Pick, cx);
     }
 
-    /// Whether a track's failure is the session having gone stale, in which case the session
-    /// reconnects and playback continues from `rebind`.
-    fn ask_for_reconnect(&mut self, cx: &mut Context<Self>) -> bool {
-        if self.track.is_none() {
-            return false;
-        }
-        self.awaiting_reconnect = self
-            .session
-            .update(cx, |session, cx| session.reconnect_if_stale(cx));
-        self.awaiting_reconnect
-    }
-
-    /// Moves playback onto a fresh engine, as after a reconnect, and resumes where it was if it
-    /// was playing or waiting to.
+    /// Moves playback onto a fresh engine and resumes where it was if it was playing.
     fn rebind(&mut self, playback: Arc<dyn PlaybackFactory>, cx: &mut Context<Self>) {
-        let resume = self.state == PlaybackState::Playing || self.awaiting_reconnect;
-        self.awaiting_reconnect = false;
+        let resume = self.state == PlaybackState::Playing;
         let at = self.position;
         self.task = None;
         self.engine = None;
@@ -2197,7 +2154,6 @@ impl Playback {
 
         self.listen(events, false, cx);
         self.engine = Some(engine);
-        self.refused = None;
         if !self.local_active() {
             self.state = PlaybackState::Idle;
             self.position = Duration::ZERO;
@@ -2273,9 +2229,7 @@ impl Playback {
         }
         match event {
             BackendEvent::OutputChanged => self.restart_output(cx),
-            BackendEvent::Unavailable { .. }
-            | BackendEvent::Throttled { .. }
-            | BackendEvent::Refused
+            BackendEvent::Unavailable { .. } | BackendEvent::Throttled { .. }
                 if self.resume_ready =>
             {
                 self.resume_ready = false;
@@ -2364,10 +2318,6 @@ impl Playback {
                 }
             }
             BackendEvent::Throttled { .. } => self.throttled(cx),
-            BackendEvent::Unavailable { .. } if self.ask_for_reconnect(cx) => {
-                self.state = PlaybackState::Loading;
-                log::warn!("playback: the provider went stale, waiting for a reconnect");
-            }
             BackendEvent::Unavailable { .. } => {
                 let failed = self.track.take();
                 let target = failed.as_ref().and_then(song_target);
@@ -2400,14 +2350,6 @@ impl Playback {
                     (false, _) => self.advance(failed, cx),
                 }
             }
-            BackendEvent::Refused => {
-                self.refuse(cx);
-                cx.emit(PlaybackEvent::EndedPlayback);
-            }
-            BackendEvent::Gated => {
-                self.gate(cx);
-                cx.emit(PlaybackEvent::EndedPlayback);
-            }
         }
         cx.notify();
     }
@@ -2431,7 +2373,6 @@ impl Playback {
             self.failures = 0;
             self.throttles = 0;
             self.paused_at = None;
-            self.refused = None;
             self.track = None;
             self.origin = None;
             self.state = PlaybackState::Idle;
@@ -2442,7 +2383,6 @@ impl Playback {
             self.seek_next = None;
             self.seek_target = None;
             self.resume_ready = false;
-            self.awaiting_reconnect = false;
             self.stored = Duration::ZERO;
             self.sleep = None;
             self.sleep_task = None;
@@ -2504,55 +2444,6 @@ impl Playback {
         if start == Start::Pick {
             Toasts::show(Outcome::Failed, "toast-offline", cx);
         }
-    }
-
-    /// Records that the provider wants a signed-in listener and stops until sign-in.
-    fn gate(&mut self, cx: &mut Context<Self>) {
-        let first = self.refused.is_none();
-        self.refused = Some(Refusal::SignIn);
-        self.track = None;
-        self.blocked_until = None;
-        let provider = self
-            .session
-            .read(cx)
-            .provider_name()
-            .unwrap_or("this provider");
-        self.state = PlaybackState::Failed(format!(
-            "{provider} only streams to a signed-in listener; nothing will play until you sign in"
-        ));
-        if first {
-            log::warn!(
-                "playback: {provider} only streams to a signed-in listener, nothing will play \
-                 until you sign in"
-            );
-        }
-        Toasts::about(
-            Outcome::Failed,
-            "toast-sign-in-to-play",
-            provider.to_owned(),
-            cx,
-        );
-        cx.notify();
-    }
-
-    /// Records that Spotify denied an audio key and stops for the rest of the session.
-    fn refuse(&mut self, cx: &mut Context<Self>) {
-        let first = self.refused.is_none();
-        self.refused = Some(Refusal::Keys);
-        self.track = None;
-        self.blocked_until = None;
-        self.state = PlaybackState::Failed(
-            "spotify denied an audio key for this account; nothing will play in this session"
-                .to_owned(),
-        );
-        if first {
-            log::error!(
-                "playback: spotify denied an audio key for this account; nothing will play in \
-                 this session"
-            );
-        }
-        Toasts::show(Outcome::Failed, "toast-keys-refused", cx);
-        cx.notify();
     }
 }
 

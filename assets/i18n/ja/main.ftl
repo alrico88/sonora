@@ -209,40 +209,18 @@ tool-filters = フィルター
 # login
 login-signed-out = サインインして音楽ライブラリを読み込む
 login-restoring = 保存されたセッションを確認しています…
-login-authorizing = ブラウザでの承認を待っています…
+login-authorizing = アカウントに接続しています…
 login-signed-in = { $name } としてサインイン中
 login-failed-title = サインインに失敗しました
-login-problem-region = 現在いる国からは Spotify のセッションを開始できません。居住国からサインインするか、Spotify アカウントの国設定を変更してください。
-login-problem-credentials = 保存された Spotify のセッションは無効になっています。続けるにはもう一度サインインしてください。
 login-problem-network = 音楽サービスに接続できませんでした。インターネット接続を確認してもう一度お試しください。
-login-problem-cancelled = サインインを承認する前にブラウザのページが閉じられました。最初からやり直してください。
-login-problem-refused = Spotify がサインインを拒否しました。しばらく待ってからもう一度お試しください。
-login-problem-premium = Sonora は Spotify Premium でストリーミングしますが、このアカウントは Premium プランに加入していません。続けるには Premium アカウントでサインインしてください。
 login-sign-in = { $provider } でサインイン
-login-connect-cookies = Cookie を手動で貼り付け
-login-cookie-submit = 続行
-login-cookie-hint = Cookie リクエストヘッダーをここに貼り付け
-login-cookie-step-1 = music.youtube.com を開き、サインインしていることを確認します。シークレット ウィンドウが最適です。
-login-cookie-step-2 = F12 を押して Network タブを開き、ページを再読み込みします。
-login-cookie-step-3 = 「browse」または「next」という名前のリクエストを選択します。
-login-cookie-step-4 = Headers の Request Headers にある Cookie を右クリックし、その値をコピーします。
-login-cookie-step-note = 値全体を貼り付けてください。リクエストの Cookies パネルでは不十分で、値に SAPISID と __Secure-3PAPISID が含まれている必要があります。
-login-window-title = { $provider } にサインイン
-login-use = { $provider } を使う
-login-guest-title = ゲストモード
-login-guest-use = ゲストモードを使う
-login-guest-detail = アカウントなしで再生・閲覧できます。ライブラリ、お気に入り、プレイリストは利用できません。
 login-usage-consent = Sonora の利用者数の推計にご協力ください。
-login-device-code = { $url } でこのコードを入力してください
 login-server-title = Subsonic サーバーに接続
 login-server-detail = Subsonic または OpenSubsonic サーバー（Navidrome、Airsonic、Gonic など）のアドレスを入力し、サーバーのユーザー名とパスワードでサインインしてください。セッションはこのデバイスに保存されます。
 login-server-hint = https://music.example.com
 login-username-hint = ユーザー名
 login-password-hint = パスワード
 login-server-submit = 接続
-login-account-title = アカウントを選択
-login-account-detail = このセッションは複数の Google アカウントにサインインしています。Sonora が使うアカウントを選んでください。
-
 # album and playlist pages
 detail-playlist = プレイリスト
 detail-play-album = アルバムを再生
@@ -271,17 +249,6 @@ artist-filter-all = すべて
 artist-filter-albums = アルバム
 artist-filter-singles = シングル
 artist-filter-eps = EP
-
-# user profile page
-user-eyebrow = プロフィール
-user-followers = { $count ->
-   *[other] フォロワー { $value }人
-}
-user-following = { $count ->
-   *[other] フォロー中 { $value }人
-}
-user-playlists = 公開プレイリスト
-user-playlists-empty = 公開プレイリストはまだありません
 
 # release kinds
 release-album = アルバム
@@ -551,7 +518,6 @@ settings-accounts-detail = このデバイスで再生に使えるサービス
 settings-provider-none = 未接続
 settings-provider-connected = 接続済み
 settings-provider-current = このサービスから再生中
-settings-provider-guest = ゲストとして再生中
 settings-provider-switch = 切り替える
 settings-sign-out = サインアウト
 settings-local-folder = インポートする音楽フォルダ
@@ -574,7 +540,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = リードメンテナー
 settings-role-maintainer = メンテナー
 settings-role-contributor = コントリビューター
-settings-notice = Copyright © 2026 Sonora Contributors. Sonora は完全に無保証です。フリーソフトウェアであり、GNU General Public License バージョン 3 以降の条件のもとで自由に再配布できます。Sonora は非公式であり、Spotify AB とは無関係です。
 
 # themes
 theme-system = システム
@@ -625,7 +590,6 @@ toast-next-playlist = プレイリストを次に再生します
 toast-queued-artist = アーティストを再生キューに追加しました
 toast-next-artist = アーティストを次に再生します
 toast-queue-failed = 再生キューに追加できませんでした
-toast-keys-refused = Spotify がこのアカウントに再生キーを発行していません
 toast-sign-in-to-play = { $name } のストリーミングにはサインインが必要です
 toast-track-unplayable = { $name } を再生できませんでした
 toast-library-add-failed = { $name } をライブラリに追加できませんでした
@@ -678,7 +642,6 @@ tags-comment = コメント
 toast-tags-saved = { $name } のタグを保存しました
 toast-tags-failed = タグを保存できませんでした
 nav-pin = ピン留め
-toast-library-pin-failed = Spotify のピン留めを更新できませんでした。
 nav-nothing-pinned = ここには何もありません
 nav-pins-alphabetical = 名前順
 nav-pins-kind = 種類別

@@ -19,6 +19,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - On macOS, one setting now picks what closing the window does: stay in the Dock, where a click
   on the icon reopens it, hide in the menu bar, or quit. Staying in the Dock is the default.
 
+### Changed
+
+- Sonora now supports music from Subsonic servers and local files only.
+
 ## [0.42.1] - 2026-10-02
 
 ### Added

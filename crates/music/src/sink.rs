@@ -289,17 +289,6 @@ impl Paced {
         }
     }
 
-    /// Waits until there is room for another packet.
-    pub fn drain(&mut self) -> Result<(), Gone> {
-        while self.full() {
-            if self.output_changed() {
-                return Err(self.disconnected());
-            }
-            std::thread::sleep(DRAIN_POLL);
-        }
-        Ok(())
-    }
-
     /// How long a full queue takes to play out. This is how far a decoder runs ahead of what
     /// is heard, so it is also the longest a paused writer waits before it sees a command.
     pub const fn poll() -> Duration {

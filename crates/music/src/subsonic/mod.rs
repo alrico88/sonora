@@ -141,12 +141,7 @@ impl MusicProvider for SubsonicProvider {
         Self::restore_stored().await
     }
 
-    async fn sign_in(
-        &self,
-        method: SignIn,
-        _prompt: crate::PromptSink,
-        _input: crate::InputSource,
-    ) -> Result<ProviderSession> {
+    async fn sign_in(&self, method: SignIn) -> Result<ProviderSession> {
         let SignIn::Credentials {
             server,
             username,

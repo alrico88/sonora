@@ -162,15 +162,7 @@ menu-rename-playlist = Rename playlist
 menu-delete-playlist = Delete playlist
 menu-add-playlist-to-library = Add to Library
 menu-remove-playlist-from-library = Remove from Library
-menu-library-add = Add to Library
-menu-library-add-tracks = { $count ->
-    [one] Add { $count } track to Library
-   *[other] Add { $count } tracks to Library
 }
-menu-library-remove = Remove from Library
-menu-library-remove-tracks = { $count ->
-    [one] Remove { $count } track from Library
-   *[other] Remove { $count } tracks from Library
 }
 menu-make-playlist-public = Make public
 menu-make-playlist-private = Make private
@@ -275,53 +267,19 @@ tool-filters = Filters
 # login
 login-signed-out = Sign in to load your music library
 login-restoring = Checking your saved session…
-login-authorizing = Waiting for authorization in your browser…
+login-authorizing = Connecting to your account…
 login-signed-in = Signed in as { $name }
 login-failed-title = Sign-in failed
-login-problem-region = Spotify will not open a session from the country you are in. Sign in from your home country, or change the country on your Spotify account.
-login-problem-credentials = Your saved Spotify session is no longer valid. Sign in again to continue.
+login-problem-credentials = The server did not accept your username or password. Sign in again to continue.
 login-problem-network = Sonora could not reach the music service. Check your internet connection and try again.
-login-problem-cancelled = You closed the browser page before approving the sign-in. Start again to finish.
-login-problem-refused = Spotify turned down the sign-in. Wait a moment and try again.
-login-problem-premium = Sonora streams through Spotify Premium, and this account does not have it. Sign in with a Premium account to continue.
 login-sign-in = Sign in with { $provider }
-login-connect-cookies = Paste cookies manually
-login-cookie-open = Open { $provider }
-login-cookie-submit = Continue
-login-cookie-hint = Paste the Cookie request header here
-login-cookie-step-1 = Open music.youtube.com and make sure you are signed in. An incognito window works best.
-login-cookie-step-2 = Press F12, open the Network tab and reload the page.
-login-cookie-step-3 = Select any request named "browse" or "next".
-login-cookie-step-4 = In Headers, find Cookie under Request Headers, right-click it and copy its value.
-login-cookie-step-note = Make sure to paste the whole value, including SAPISID and __Secure-3PAPISID.
-login-cookie-header-title = Paste your { $provider } cookies to finish signing in
-login-cookie-apple-step-3 = Select any request to { $site }.
-login-cookie-apple-note = Make sure to paste the whole value, including { $cookie }.
-login-cookie-named-title = Paste your { $provider } cookie to finish signing in
-login-cookie-named-hint = Paste the cookie value here
-login-cookie-named-step-1 = Open { $site } and make sure you are signed in.
-login-cookie-named-step-2 = Press F12 and open the Storage tab in Firefox, or the Application tab in Chrome.
-login-cookie-named-step-3 = Expand Cookies, select { $site } and find the cookie named { $cookie }.
-login-cookie-named-step-4 = Double-click its value and copy it.
-login-cookie-named-note = The { $cookie } value alone is enough. A whole Cookie header copied from the Network tab works too.
-login-window-title = Sign in to { $provider }
-login-use = Use { $provider }
-login-guest-title = Guest mode
-login-guest-use = Use Guest mode
-login-guest-detail = Browse and play without an account. Your library, likes and playlists stay out of reach.
 login-usage-consent = Help us estimate how many people use Sonora.
-login-device-code = Enter this code at { $url }
 login-server-title = Connect to your Subsonic server
 login-server-detail = Enter the address of any Subsonic or OpenSubsonic server (Navidrome, Airsonic, Gonic, …), then sign in with your server username and password. The session stays on this device.
 login-server-hint = https://music.example.com
 login-username-hint = Username
 login-password-hint = Password
 login-server-submit = Connect
-login-account-title = Choose an account
-login-account-detail = This session is signed in to more than one Google account. Pick the one Sonora should use.
-login-choose-title = Sign in to { $provider }
-login-choose-detail = Choose how to sign in to { $provider }.
-
 # album and playlist pages
 detail-playlist = Playlist
 detail-play-album = Play album
@@ -352,23 +310,10 @@ artist-filter-all = All
 artist-filter-albums = Albums
 artist-filter-singles = Singles
 artist-filter-eps = EPs
-artist-appears-on = Appears on
 album-also-like = You might also like
 album-tab-albums = Albums
 album-tab-artists = Artists
 album-label = ℗ { $label }
-
-# user profile page
-user-eyebrow = Profile
-user-followers = { $count ->
-    [one] { $value } follower
-   *[other] { $value } followers
-}
-user-following = { $count ->
-   *[other] { $value } following
-}
-user-playlists = Public playlists
-user-playlists-empty = No public playlists yet
 
 # release kinds
 release-album = Album
@@ -551,7 +496,6 @@ settings-font-detail = Base text size, everything else scales with it
 settings-font-value = { $size } px
 settings-startup = Show on startup
 settings-startup-detail = The screen Sonora opens on launch
-settings-startup-no-guest = Unavailable in Guest mode
 settings-entries = Sidebar entries
 settings-entries-detail = The sections listed in the sidebar
 settings-entries-pick = Choose entries
@@ -622,31 +566,6 @@ settings-sleep-configure = Configure…
 settings-sleep-off = Off
 settings-sleep-end-of-track = End of track
 settings-sleep-minutes = { $count } mins
-settings-widevine = Widevine module
-settings-widevine-detail = Apple Music tracks are encrypted and need Google's Widevine module. Sonora uses one it downloaded from Google with your consent, or else the copy a browser here already has.
-settings-widevine-none = Apple Music tracks are encrypted and need Google's Widevine module. No browser here has one, so Sonora can download it from Google with your consent.
-settings-widevine-looking = Looking…
-settings-widevine-asking = Waiting for your answer
-settings-widevine-fetching = Downloading…
-settings-widevine-installing = Installing…
-settings-widevine-installed = Found in a browser
-settings-widevine-fetched = Downloaded from Google
-settings-widevine-missing = Not installed
-settings-widevine-configured = Set by the environment
-settings-widevine-fetch = Download
-settings-widevine-uninstall = Uninstall
-confirm-uninstall-widevine-title = Uninstall the Widevine module?
-confirm-uninstall-widevine = Sonora deletes the copy it downloaded from Google. Apple Music tracks stop playing until it is downloaded again.
-widevine-prompt-title = Widevine module
-widevine-prompt-wanted = Apple Music tracks are encrypted and need Google's Widevine module. No browser on this computer has one. Sonora can download it from Google's servers, the same file Chrome installs, and keep it in its own folder.
-widevine-prompt-replace = Apple Music tracks are encrypted and need Google's Widevine module. A browser on this computer has one, and Sonora can download Google's own copy to use instead, the same file Chrome installs, kept in its own folder.
-widevine-prompt-downloading = Downloading…
-widevine-prompt-terms = Version { $version } is downloaded. Installing it means accepting Google's terms for the module:
-widevine-prompt-installing = Installing…
-widevine-prompt-download = Download
-widevine-prompt-later = Not now
-widevine-prompt-accept = Accept and install
-widevine-prompt-decline = Decline
 settings-equalizer = Equalizer
 settings-equalizer-detail = Shapes the sound across ten bands, one per octave
 settings-equalizer-preset = Preset
@@ -692,9 +611,6 @@ settings-lyrics-providers-selected = { $count ->
    *[other] { $count } selected
     }
 settings-lyrics-provider-local = Local files
-settings-lyrics-provider-spotify = Spotify
-settings-lyrics-provider-youtube = YouTube Music
-settings-lyrics-provider-apple-music = Apple Music
 settings-lyrics-provider-musixmatch = Musixmatch
 settings-lyrics-provider-lrclib = LRCLIB
 settings-lyrics-provider-kugou = Kugou
@@ -726,7 +642,6 @@ settings-accounts-detail = The services this device can play from
 settings-provider-none = Not connected
 settings-provider-connected = Connected
 settings-provider-current = Playing from this service
-settings-provider-guest = Playing as a guest
 settings-provider-switch = Switch to
 settings-profile-account = { $provider } · { $account }
 settings-sign-out = Sign out
@@ -775,7 +690,7 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = Lead Maintainer
 settings-role-maintainer = Maintainer
 settings-role-contributor = Contributor
-settings-notice = Copyright © 2026 Sonora Contributors. Sonora comes with absolutely no warranty. It is free software, and you are welcome to redistribute it under the terms of the GNU General Public License version 3 or later. Sonora is unofficial and is not affiliated with Spotify AB.
+settings-notice = Copyright © 2026 Sonora Contributors. Sonora comes with absolutely no warranty. It is free software, and you are welcome to redistribute it under the terms of the GNU General Public License version 3 or later.
 
 # themes
 theme-system = System
@@ -832,7 +747,6 @@ toast-queued-artist = Artist added to the queue
 toast-next-artist = Artist plays next
 toast-last-artist = Artist plays last
 toast-queue-failed = That could not be added to the queue
-toast-keys-refused = Spotify is not granting this account playback keys
 toast-sign-in-to-play = { $name } only streams to a signed-in listener
 toast-track-unplayable = { $name } could not be played
 toast-playback-stopped = Playback stopped after several tracks in a row could not be played
@@ -841,9 +755,6 @@ toast-still-throttled = { $name } is still limiting playback. Press play to try 
 toast-library-add-failed = { $name } could not be added to your library
 toast-library-remove-failed = { $name } could not be removed from your library
 toast-rating-failed = { $name } could not be rated
-toast-library-added = Added to your library
-toast-library-removed = Removed from your library
-
 # lyrics
 lyrics-title = Lyrics
 lyrics-idle = Play something to see its lyrics
@@ -896,7 +807,6 @@ toast-tags-saved = Saved the tags for { $name }
 toast-tags-failed = The tags could not be saved
 
 nav-pin = Pin
-toast-library-pin-failed = Could not update the pin.
 nav-nothing-pinned = Nothing here
 nav-pins-alphabetical = Alphabetical
 nav-pins-kind = By type

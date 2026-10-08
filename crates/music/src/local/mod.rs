@@ -18,8 +18,8 @@ use async_trait::async_trait;
 use storage::{Cache, Database};
 
 use crate::{
-    Capabilities, InputSource, MusicApi, MusicProvider, PlaybackFactory, PromptSink,
-    ProviderSession, Shape, SignIn, Track, UserProfile,
+    Capabilities, MusicApi, MusicProvider, PlaybackFactory, ProviderSession, Shape, SignIn, Track,
+    UserProfile,
 };
 
 pub struct LocalProvider {
@@ -68,8 +68,6 @@ impl LocalProvider {
                 radio: false,
                 playcounts: false,
                 ratings: false,
-                library: false,
-                pins: false,
             },
         })
     }
@@ -113,12 +111,7 @@ impl MusicProvider for LocalProvider {
         Ok(None)
     }
 
-    async fn sign_in(
-        &self,
-        method: SignIn,
-        _prompt: PromptSink,
-        _input: InputSource,
-    ) -> Result<ProviderSession> {
+    async fn sign_in(&self, method: SignIn) -> Result<ProviderSession> {
         let SignIn::Path(paths) = method else {
             return Err(anyhow!(
                 "local files can only be configured with a folder path"

@@ -231,40 +231,18 @@ tool-filters = Süzgeçler
 # login
 login-signed-out = Müzik kitaplığını yüklemek için oturum aç
 login-restoring = Kayıtlı oturumun denetleniyor…
-login-authorizing = Tarayıcında izin verilmesi bekleniyor…
+login-authorizing = Hesabına bağlanılıyor…
 login-signed-in = { $name } olarak oturum açıldı
 login-failed-title = Oturum açılamadı
-login-problem-region = Spotify, bulunduğun ülkeden oturum açılmasına izin vermiyor. Kendi ülkenden oturum aç ya da Spotify hesabındaki ülkeyi değiştir.
-login-problem-credentials = Kayıtlı Spotify oturumun artık geçerli değil. Sürdürmek için yeniden oturum aç.
 login-problem-network = Sonora, müzik hizmetine ulaşamadı. İnternet bağlantını denetleyip yeniden dene.
-login-problem-cancelled = Oturum açmayı onaylamadan tarayıcı sayfasını kapattın. Bitirmek için yeniden başla.
-login-problem-refused = Spotify oturum açma isteğini geri çevirdi. Biraz bekleyip yeniden dene.
-login-problem-premium = Sonora, Spotify Premium üzerinden yayın yapar ve bu hesapta Premium yok. Sürdürmek için Premium bir hesapla oturum aç.
 login-sign-in = { $provider } ile oturum aç
-login-connect-cookies = Çerezleri elle yapıştır
-login-cookie-submit = Sürdür
-login-cookie-hint = Cookie istek başlığını buraya yapıştır
-login-cookie-step-1 = music.youtube.com adresini aç ve oturumunun açık olduğundan emin ol. En iyi sonucu gizli pencerede alırsın.
-login-cookie-step-2 = F12'ye bas, Network sekmesini aç ve sayfayı yeniden yükle.
-login-cookie-step-3 = "browse" ya da "next" adlı herhangi bir isteği seç.
-login-cookie-step-4 = Headers içinde Request Headers altındaki Cookie'yi bul, sağ tıklayıp değerini kopyala.
-login-cookie-step-note = SAPISID ve __Secure-3PAPISID dahil olmak üzere değerin tamamını yapıştırdığından emin ol.
-login-window-title = { $provider } oturumu aç
-login-use = { $provider } kullan
-login-guest-title = Konuk modu
-login-guest-use = Konuk modunu kullan
-login-guest-detail = Hesap olmadan gez ve çal. Kitaplığın, beğenilerin ve çalma listelerin erişim dışında kalır.
 login-usage-consent = Sonora'yı kaç kişinin kullandığını tahmin etmemize yardımcı ol.
-login-device-code = Bu kodu { $url } adresinde gir
 login-server-title = Subsonic sunucuna bağlan
 login-server-detail = Herhangi bir Subsonic ya da OpenSubsonic sunucusunun (Navidrome, Airsonic, Gonic, …) adresini gir, sonra sunucu kullanıcı adın ve parolanla oturum aç. Oturum bu cihazda kalır.
 login-server-hint = https://muzik.ornek.com
 login-username-hint = Kullanıcı adı
 login-password-hint = Parola
 login-server-submit = Bağlan
-login-account-title = Bir hesap seç
-login-account-detail = Bu oturumda birden çok Google hesabı açık. Sonora'nın kullanacağı hesabı seç.
-
 # album and playlist pages
 detail-playlist = Çalma listesi
 detail-play-album = Albümü çal
@@ -294,19 +272,6 @@ artist-filter-all = Tümü
 artist-filter-albums = Albümler
 artist-filter-singles = Tekliler
 artist-filter-eps = EP'ler
-
-# user profile page
-user-eyebrow = Profil
-user-followers =
-    { $count ->
-       *[other] { $value } takipçi
-    }
-user-following =
-    { $count ->
-       *[other] { $value } takip ediliyor
-    }
-user-playlists = Herkese açık çalma listeleri
-user-playlists-empty = Henüz herkese açık çalma listesi yok
 
 # release kinds
 release-album = Albüm
@@ -576,7 +541,6 @@ settings-accounts-detail = Bu cihazın çalabileceği servisler
 settings-provider-none = Bağlı değil
 settings-provider-connected = Bağlı
 settings-provider-current = Bu servisten çalıyor
-settings-provider-guest = Konuk olarak çalıyor
 settings-provider-switch = Şuna geç
 settings-sign-out = Oturumu kapat
 settings-local-folder = Müzik klasörleri
@@ -599,7 +563,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = Baş Bakımcı
 settings-role-maintainer = Bakımcı
 settings-role-contributor = Katkıda Bulunan
-settings-notice = Copyright © 2026 Sonora Contributors. Sonora kesinlikle hiçbir garanti vermez. Bu özgür bir yazılımdır ve GNU Genel Kamu Lisansı sürüm 3 ya da sonrasının koşulları altında yeniden dağıtabilirsin. Sonora resmi değildir ve Spotify AB ile bağlantısı yoktur.
 
 # themes
 theme-system = Sistem
@@ -650,7 +613,6 @@ toast-next-playlist = Sırada çalma listesi çalacak
 toast-queued-artist = Sanatçı sıraya eklendi
 toast-next-artist = Sırada sanatçı çalacak
 toast-queue-failed = Bu, sıraya eklenemedi
-toast-keys-refused = Spotify bu hesaba çalma anahtarları vermiyor
 toast-sign-in-to-play = { $name } yalnızca oturum açmış dinleyicilere yayınlanır
 toast-track-unplayable = { $name } çalınamadı
 toast-library-add-failed = { $name } kitaplığına eklenemedi
@@ -703,7 +665,6 @@ tags-comment = Yorum
 toast-tags-saved = { $name } için etiketler kaydedildi
 toast-tags-failed = Etiketler kaydedilemedi
 nav-pin = Sabitle
-toast-library-pin-failed = Spotify'daki sabitleme güncellenemedi.
 nav-nothing-pinned = Burada bir şey yok
 nav-pins-alphabetical = Alfabetik
 nav-pins-kind = Türe göre

@@ -389,9 +389,6 @@ impl ItemMenu {
             ),
         };
         let toggle_library = library_toggle(tracks, &library, cx);
-        let membership =
-            (!barren && !imported && Sonora::global(cx).session.read(cx).capabilities().library)
-                .then(|| library_membership(tracks, &library, cx));
 
         let album = match (many, columns.album, track.album_id.clone()) {
             (true, _, _) | (false, true, _) => None,
@@ -502,7 +499,6 @@ impl ItemMenu {
                 add_to_playlist
                     .into_iter()
                     .chain([library_action.unwrap_or(toggle_library)])
-                    .chain(membership)
                     .collect(),
                 [next, queue, last].into_iter().chain(radio).collect(),
                 album.into_iter().chain(artist).collect(),
@@ -612,88 +608,6 @@ fn library_toggle(tracks: &[Track], library: &Entity<Library>, cx: &App) -> Menu
     }
 }
 
-/// Add to Library or Remove from Library for tracks, on a provider whose library is apart
-/// from its favorites. Several tracks are added unless every one of them is there already,
-/// in which case they are removed.
-fn library_membership(tracks: &[Track], library: &Entity<Library>, cx: &App) -> MenuItem {
-    let count = tracks.len();
-    let actionable: Vec<Track> = tracks
-        .iter()
-        .filter(|track| {
-            track
-                .id
-                .as_deref()
-                .is_some_and(|id| !library.read(cx).pending_library(id))
-        })
-        .cloned()
-        .collect();
-    let present = !actionable.is_empty()
-        && actionable.iter().all(|track| {
-            track
-                .id
-                .as_deref()
-                .is_some_and(|id| library.read(cx).in_library(id))
-        });
-    let item = MenuItem::new(
-        "toggle-library-membership",
-        match present {
-            true => counted("menu-library-remove", "menu-library-remove-tracks", count),
-            false => counted("menu-library-add", "menu-library-add-tracks", count),
-        },
-    )
-    .icon(match present {
-        true => "icons/library-big-off.svg",
-        false => "icons/library-big.svg",
-    });
-
-    match actionable.is_empty() {
-        true => item.disabled(),
-        false => {
-            let library = library.clone();
-            item.on_click(move |_, _, cx| {
-                library.update(cx, |library, cx| {
-                    for track in actionable.clone() {
-                        let there = track.id.as_deref().is_some_and(|id| library.in_library(id));
-                        if there == present {
-                            library.set_track_in_library(track, !present, cx);
-                        }
-                    }
-                });
-            })
-        }
-    }
-}
-
-/// The same for one album, and nothing on a provider whose library is its favorites.
-fn album_membership_item(album: Album, cx: &App) -> Option<MenuItem> {
-    let session = Sonora::global(cx).session.read(cx);
-    if !session.capabilities().library || music::is_local_id(&album.id) {
-        return None;
-    }
-    let library = Sonora::global(cx).library.clone();
-    let present = library.read(cx).in_library(&album.id);
-    let item = MenuItem::new(
-        "toggle-album-membership",
-        match present {
-            true => t!("menu-library-remove"),
-            false => t!("menu-library-add"),
-        },
-    )
-    .icon(match present {
-        true => "icons/library-big-off.svg",
-        false => "icons/library-big.svg",
-    });
-    Some(match library.read(cx).pending_library(&album.id) {
-        true => item.disabled(),
-        false => item.on_click(move |_, _, cx| {
-            let library = Sonora::global(cx).library.clone();
-            library.update(cx, |library, cx| {
-                library.set_album_in_library(album.clone(), !present, cx)
-            });
-        }),
-    })
-}
-
 fn sections(menu: Menu, groups: Vec<Vec<MenuItem>>) -> Menu {
     groups
         .into_iter()
@@ -708,7 +622,7 @@ fn sections(menu: Menu, groups: Vec<Vec<MenuItem>>) -> Menu {
         })
 }
 
-/// An album's menu, laid out like a track's: Add to playlist and the library first, then the
+/// An album's menu, laid out like a track's: Add to playlist and favorites first, then the
 /// queue, then the link and the pin. `menus` holds the playlist submenu's state.
 pub(crate) fn album_menu(
     album: Album,
@@ -739,10 +653,7 @@ pub(crate) fn album_menu(
     sections(
         Menu::new("album-context-menu"),
         vec![
-            [add_to_playlist, album_library_item(album.clone(), cx)]
-                .into_iter()
-                .chain(album_membership_item(album.clone(), cx))
-                .collect(),
+            vec![add_to_playlist, album_library_item(album.clone(), cx)],
             vec![
                 MenuItem::new("play-album-next", t!("menu-play-next"))
                     .icon("icons/list-start.svg")

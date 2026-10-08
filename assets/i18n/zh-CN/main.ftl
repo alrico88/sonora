@@ -246,40 +246,18 @@ tool-filters = 筛选
 # login
 login-signed-out = 登录以加载你的音乐库
 login-restoring = 正在检查已保存的会话…
-login-authorizing = 正在浏览器中等待授权…
+login-authorizing = 正在连接你的账户…
 login-signed-in = 已登录为 { $name }
 login-failed-title = 登录失败
-login-problem-region = Spotify 不会从你所在的国家/地区开启会话。请从你的所在国家/地区登录，或更改 Spotify 账户上的国家/地区。
-login-problem-credentials = 你保存的 Spotify 会话已失效。请重新登录以继续。
 login-problem-network = Sonora 无法连接到音乐服务。请检查网络连接并重试。
-login-problem-cancelled = 你在批准登录之前关闭了浏览器页面。请重新开始以完成登录。
-login-problem-refused = Spotify 拒绝了登录请求。请稍等片刻后重试。
-login-problem-premium = Sonora 通过 Spotify Premium 串流，而此账户没有 Premium。请使用 Premium 账户登录以继续。
 login-sign-in = 使用 { $provider } 登录
-login-connect-cookies = 手动粘贴 Cookies
-login-cookie-submit = 继续
-login-cookie-hint = 在此粘贴 Cookie 请求头
-login-cookie-step-1 = 打开 music.youtube.com 并确保你已登录。使用无痕窗口效果最好。
-login-cookie-step-2 = 按 F12，打开网络（Network）标签页并刷新页面。
-login-cookie-step-3 = 选择任意名为“browse”或“next”的请求。
-login-cookie-step-4 = 在标头（Headers）中，找到请求标头（Request Headers）下的 Cookie，右键点击并复制其值。
-login-cookie-step-note = 请确保粘贴完整值，包括 SAPISID 和 __Secure-3PAPISID。
-login-window-title = 使用 { $provider } 登录
-login-use = 使用 { $provider }
-login-guest-title = 访客模式
-login-guest-use = 使用访客模式
-login-guest-detail = 无需账户即可浏览和播放。你的音乐库、收藏和播放列表将无法访问。
 login-usage-consent = 帮助我们估算有多少人使用 Sonora。
-login-device-code = 在 { $url } 输入此代码
 login-server-title = 连接到你的 Subsonic 服务器
 login-server-detail = 输入任意 Subsonic 或 OpenSubsonic 服务器（Navidrome、Airsonic、Gonic……）的地址，然后使用服务器用户名和密码登录。会话会保留在此设备上。
 login-server-hint = https://music.example.com
 login-username-hint = 用户名
 login-password-hint = 密码
 login-server-submit = 连接
-login-account-title = 选择一个账户
-login-account-detail = 此会话登录了多个 Google 账户。请选择 Sonora 应使用的账户。
-
 # album and playlist pages
 detail-playlist = 播放列表
 detail-play-album = 播放专辑
@@ -309,18 +287,6 @@ artist-filter-all = 全部
 artist-filter-albums = 专辑
 artist-filter-singles = 单曲
 artist-filter-eps = EP
-
-# user profile page
-user-eyebrow = 个人资料
-user-followers = { $count ->
-    [one] { $value } 位关注者
-   *[other] { $value } 位关注者
-}
-user-following = { $count ->
-   *[other] 正在关注 { $value } 人
-}
-user-playlists = 公开播放列表
-user-playlists-empty = 还没有公开播放列表
 
 # release kinds
 release-album = 专辑
@@ -593,7 +559,6 @@ settings-accounts-detail = 此设备可以播放的服务
 settings-provider-none = 未连接
 settings-provider-connected = 已连接
 settings-provider-current = 正在从此服务播放
-settings-provider-guest = 以访客身份播放
 settings-provider-switch = 切换到
 settings-sign-out = 退出登录
 settings-local-folder = 音乐文件夹
@@ -616,7 +581,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = 首席维护者
 settings-role-maintainer = 维护者
 settings-role-contributor = 贡献者
-settings-notice = 版权所有 © 2026 Sonora 贡献者。Sonora 不提供任何担保。它是自由软件，你可以根据 GNU 通用公共许可证第 3 版或更高版本的条款重新分发。Sonora 是非官方项目，与 Spotify AB 无关联。
 
 # themes
 theme-system = 系统
@@ -667,7 +631,6 @@ toast-next-playlist = 接下来播放该列表
 toast-queued-artist = 歌手已添加到播放队列
 toast-next-artist = 接下来播放歌手
 toast-queue-failed = 无法添加到播放队列
-toast-keys-refused = Spotify 未授予此账户播放密钥
 toast-sign-in-to-play = { $name } 仅向已登录用户播放
 toast-track-unplayable = { $name } 无法播放
 toast-library-add-failed = { $name } 无法添加到你的音乐库
@@ -721,7 +684,6 @@ toast-tags-saved = 已保存 { $name } 的标签
 toast-tags-failed = 标签无法保存
 
 nav-pin = 固定
-toast-library-pin-failed = 无法在 Spotify 中更新固定状态。
 nav-nothing-pinned = 这里什么都没有
 nav-pins-alphabetical = 按字母顺序
 nav-pins-kind = 按类型

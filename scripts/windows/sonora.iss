@@ -185,12 +185,6 @@ Root: HKA; Subkey: "Software\Classes\Sonora.ape\DefaultIcon"; ValueType: string;
 Root: HKA; Subkey: "Software\Classes\Sonora.ape\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExeName}\SupportedTypes"; ValueType: string; ValueName: ".ape"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Sonora\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ape"; ValueData: "Sonora.ape"; Flags: uninsdeletevalue
-; spotify
-Root: HKA; Subkey: "Software\Sonora\Capabilities\UrlAssociations"; ValueType: string; ValueName: "spotify"; ValueData: "SonoraSpotify"; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\SonoraSpotify"; ValueType: string; ValueName: ""; ValueData: "Spotify Link"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\SonoraSpotify"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKA; Subkey: "Software\Classes\SonoraSpotify\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExeName},0"
-Root: HKA; Subkey: "Software\Classes\SonoraSpotify\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" ""%1"""
 
 ; Setup runs elevated, and a [Run] entry inherits that unless it says otherwise: postinstall
 ; entries default to runasoriginaluser, the relaunch after a silent update does not, and an

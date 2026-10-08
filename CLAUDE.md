@@ -1,7 +1,8 @@
 # sonora
 
-A native music streaming client, built with Rust and [GPUI](https://github.com/zed-industries/zed)
-(Zed's UI framework). Cargo workspace, edition 2024, resolver 3.
+A native music player for Subsonic servers and local files, built with Rust and
+[GPUI](https://github.com/zed-industries/zed) (Zed's UI framework). Cargo workspace, edition
+2024, resolver 3.
 
 ## Crate layout
 
@@ -18,8 +19,6 @@ crates/
   i18n/       Fluent localization: the `t!` macro, locale selection, embedded .ftl
   icons/      the icon packs: registry, active pack, path resolution, AssetSource
   embed/      build-script helper that walks a folder and writes include_bytes! literals
-  webview/    a native browser window over a throwaway session, for cookie sign-ins and PO tokens
-  widevine/   the Widevine CDM host, pssh and CENC fMP4 parsing, for any DRM'd provider
 ```
 
 Dependency direction is strict. Do not create a back edge:
@@ -27,8 +26,6 @@ Dependency direction is strict. Do not create a back edge:
 ```
 sonora → views → state → music
          state, music → storage
-         state → webview
-         music → widevine
          all ui-side crates → ui, router, input → ui → gpui
          every ui-side crate → i18n, icons → gpui
 ```
@@ -40,10 +37,7 @@ sonora → views → state → music
 - `music::engine` is the one playback engine and `music::stream` the one progressive download. A
   provider implements `engine::Fetch` and `stream::Body` rather than writing its own. The engine
   applies loudness normalisation, so a provider only reports a track's level through
-  `Fetch::loudness`. Spotify is the one exception, because librespot decodes and normalises
-  inside its own player.
-- `music::drm` is the only way `state` and `views` reach protected playback. The CDM is never
-  shipped in any artefact or package.
+  `Fetch::loudness`.
 
 ## Rules
 
@@ -51,9 +45,6 @@ sonora → views → state → music
   `crates/views/src/chrome/` first, and extend an element with a builder method rather than
   writing a sibling. New elements copy the shape of `ui/src/button.rs`, including the
   `mem::take` and `refine` of caller styles.
-- **Never call the Spotify Web API.** No `reqwest` to `api.spotify.com`, no client secret, no
-  `rspotify`. Spotify data comes from librespot's `spclient`, and auth uses Spotify's own client id
-  in `auth.rs`.
 - **Never hardcode a color, radius or size.** Read them from `cx.theme()` and `theme.metrics`. A
   literal `px(…)` is allowed only for a local, non-scaling detail declared as a module `const`. A
   new color token goes into `Theme`, every `Theme::*()` constructor, `ThemeOverrides` and
@@ -64,7 +55,7 @@ sonora → views → state → music
 - **Every user-facing string comes from Fluent.** Add the key to `assets/i18n/en-US/main.ftl`. Other
   locales may lag. Never call `t!` in a constructor: store the key and resolve it in `render`.
   Counts use Fluent selectors. Log messages and `.context(…)` stay in English.
-- **Network work runs on tokio.** Anything touching `MusicApi`, librespot or sockets goes inside
+- **Network work runs on tokio.** Anything touching `MusicApi` or sockets goes inside
   `Io::global(cx).spawn`, awaited from `cx.spawn` and applied in `this.update` ending with
   `cx.notify()`. Store the returned `Task` in a field and never detach a data load. Network-backed
   features belong in a `state` entity, not a view. An entity that caches provider data clears on
@@ -93,7 +84,7 @@ cargo clippy --workspace --all-targets
 The devShell has no `cargo` or `cargo-clippy`; those come from the system profile. The flake
 packages the released binary only, so `nix build` never sees the working tree.
 `.cargo/config.toml` links with mold on `x86_64-unknown-linux-gnu`, so mold must be on PATH, or
-build with `RUSTFLAGS=""`. `crates/widevine` compiles C++, so a C++ compiler is needed too.
+build with `RUSTFLAGS=""`.
 
 Clippy is clean, `--all-targets` included, and stays that way. Boxed callback fields get a
 module-local `type` alias rather than a `type_complexity` warning. The one `#[allow]` is

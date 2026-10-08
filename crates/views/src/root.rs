@@ -7,9 +7,9 @@ use input::{
 };
 use router::{Destination, NavigationEvent, Screen, SettingsTab, back, forward, navigate};
 use state::{
-    ArtistDetail, Detail, GenreDetails, Genres, Home, Io, Library, Network, Playback, Profile,
-    Queue, Reconnected, SYSTEM_FONT, Scan, Search, Session, SessionEvent, SessionState, Shelf,
-    SideTab, SongDetail, Sonora,
+    ArtistDetail, Detail, GenreDetails, Genres, Home, Io, Library, Network, Playback, Queue,
+    Reconnected, SYSTEM_FONT, Scan, Search, Session, SessionEvent, SessionState, Shelf, SideTab,
+    SongDetail, Sonora,
 };
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 use ui::WindowFrame;
@@ -28,7 +28,7 @@ use crate::shells::Shell;
 use crate::shells::workspace::Workspace;
 use crate::{
     Adaptive, ArtistView, DetailView, FullscreenView, GenreView, HistoryView, HomeView,
-    LibraryView, LoginView, SettingsView, SongView, UserView,
+    LibraryView, LoginView, SettingsView, SongView,
 };
 
 struct Screens {
@@ -42,8 +42,6 @@ struct Screens {
     album_detail: Option<Entity<Detail>>,
     song: Entity<SongView>,
     song_detail: Entity<SongDetail>,
-    user: Entity<UserView>,
-    user_profile: Entity<Profile>,
     playlist: Option<Entity<DetailView>>,
     playlist_detail: Option<Entity<Detail>>,
     search: Entity<SearchView>,
@@ -187,9 +185,6 @@ impl Root {
         let song_detail = cx.new(|cx| SongDetail::new(session.clone(), io.clone(), cx));
         let song = cx.new(|cx| SongView::new(song_detail.clone(), playback.clone(), cx));
 
-        let user_profile = cx.new(|cx| Profile::new(session.clone(), io.clone(), cx));
-        let user = cx.new(|cx| UserView::new(user_profile.clone(), playback.clone(), cx));
-
         let start = navigation.read(cx).current();
         let workspace = cx.new(|cx| {
             Workspace::new(
@@ -295,8 +290,6 @@ impl Root {
                 album_detail: None,
                 song,
                 song_detail,
-                user,
-                user_profile,
                 playlist: None,
                 playlist_detail: None,
                 search,
@@ -620,12 +613,6 @@ impl Root {
                 toolbar = Some(playlist.read(cx).toolbar());
                 playlist.into()
             }
-            Destination::User(id) => {
-                self.screens
-                    .user_profile
-                    .update(cx, |profile, cx| profile.open(&id, cx));
-                self.screens.user.clone().into()
-            }
             Destination::Artist(id) => {
                 let (artist, detail) = self.artist(cx);
                 detail.update(cx, |artist, cx| artist.open(&id, cx));
@@ -726,7 +713,7 @@ impl Render for Root {
         let show_sign_in = match self.session.read(cx).state() {
             SessionState::SignedOut | SessionState::Failed(_) => true,
             SessionState::Restoring | SessionState::SignedIn(_) | SessionState::Offline(_) => false,
-            SessionState::Authorizing(_) => self.signing_in,
+            SessionState::Authorizing => self.signing_in,
         };
         self.signing_in = show_sign_in;
 

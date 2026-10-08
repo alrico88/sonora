@@ -14,6 +14,5 @@ pub use screens::library::LibraryView;
 pub use screens::login::LoginView;
 pub use screens::settings::SettingsView;
 use screens::song::SongView;
-use screens::user::UserView;
 use shared::adaptive::Adaptive;
 use shells::fullscreen::FullscreenView;

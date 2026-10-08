@@ -9,4 +9,3 @@ pub(crate) mod login;
 pub(crate) mod search;
 pub(crate) mod settings;
 pub(crate) mod song;
-pub(crate) mod user;

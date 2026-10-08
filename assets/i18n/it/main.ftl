@@ -246,40 +246,18 @@ tool-filters = Filtri
 # login
 login-signed-out = Accedi per caricare la tua libreria musicale
 login-restoring = Verifica della sessione salvata…
-login-authorizing = In attesa dell'autorizzazione nel browser…
+login-authorizing = Connessione all'account…
 login-signed-in = Connesso come { $name }
 login-failed-title = Accesso non riuscito
-login-problem-region = Spotify non aprirà una sessione dal paese in cui ti trovi. Accedi dal tuo paese di residenza o cambia il paese sul tuo account Spotify.
-login-problem-credentials = La tua sessione Spotify salvata non è più valida. Accedi di nuovo per continuare.
 login-problem-network = Sonora non è riuscita a raggiungere il servizio musicale. Controlla la connessione internet e riprova.
-login-problem-cancelled = Hai chiuso la pagina del browser prima di approvare l'accesso. Ricomincia per completare.
-login-problem-refused = Spotify ha rifiutato l'accesso. Attendi un momento e riprova.
-login-problem-premium = Sonora trasmette tramite Spotify Premium e questo account non lo possiede. Accedi con un account Premium per continuare.
 login-sign-in = Accedi con { $provider }
-login-connect-cookies = Incolla i cookie manualmente
-login-cookie-submit = Continua
-login-cookie-hint = Incolla qui l'intestazione Cookie della richiesta
-login-cookie-step-1 = Apri music.youtube.com e assicurati di aver effettuato l'accesso. Una finestra in incognito funziona meglio.
-login-cookie-step-2 = Premi F12, apri la scheda Rete e ricarica la pagina.
-login-cookie-step-3 = Seleziona una richiesta chiamata "browse" o "next".
-login-cookie-step-4 = In Intestazioni, trova Cookie tra le intestazioni della richiesta, fai clic destro e copia il valore.
-login-cookie-step-note = Incolla l'intero valore qui sotto: il pannello dei Cookie della richiesta non è sufficiente, perché il valore deve contenere SAPISID e __Secure-3PAPISID.
-login-window-title = Accedi a { $provider }
-login-use = Usa { $provider }
-login-guest-title = Modalità ospite
-login-guest-use = Usa modalità ospite
-login-guest-detail = Sfoglia e ascolta senza account. La tua libreria, i preferiti e le playlist rimarranno non disponibili.
 login-usage-consent = Aiutaci a stimare quante persone usano Sonora.
-login-device-code = Inserisci questo codice su { $url }
 login-server-title = Connettiti al tuo server Subsonic
 login-server-detail = Inserisci l'indirizzo di un server Subsonic o OpenSubsonic (Navidrome, Airsonic, Gonic, …), poi accedi con nome utente e password del server. La sessione rimane su questo dispositivo.
 login-server-hint = https://music.example.com
 login-username-hint = Nome utente
 login-password-hint = Password
 login-server-submit = Connetti
-login-account-title = Scegli un account
-login-account-detail = Questa sessione ha effettuato l'accesso a più di un account Google. Scegli quello che Sonora deve usare.
-
 # album and playlist pages
 detail-playlist = Playlist
 detail-play-album = Riproduci album
@@ -309,19 +287,6 @@ artist-filter-all = Tutti
 artist-filter-albums = Album
 artist-filter-singles = Singoli
 artist-filter-eps = EP
-
-# user profile page
-user-eyebrow = Profilo
-user-followers = { $count ->
-    [one] { $value } follower
-   *[other] { $value } follower
-}
-user-following = { $count ->
-    [one] { $value } seguito
-   *[other] { $value } seguiti
-}
-user-playlists = Playlist pubbliche
-user-playlists-empty = Ancora nessuna playlist pubblica
 
 # release kinds
 release-album = Album
@@ -594,7 +559,6 @@ settings-accounts-detail = I servizi da cui questo dispositivo può riprodurre
 settings-provider-none = Non connesso
 settings-provider-connected = Connesso
 settings-provider-current = Riproduzione da questo servizio
-settings-provider-guest = Riproduzione come ospite
 settings-provider-switch = Passa a
 settings-sign-out = Disconnetti
 settings-local-folder = Cartella musica importata
@@ -617,7 +581,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = Lead Maintainer
 settings-role-maintainer = Maintainer
 settings-role-contributor = Contributor
-settings-notice = Copyright © 2026 Sonora Contributors. Sonora viene fornito senza alcuna garanzia. È software libero e puoi ridistribuirlo secondo i termini della GNU General Public License versione 3 o successiva. Sonora è non ufficiale e non è affiliato con Spotify AB.
 
 # themes
 theme-system = Sistema
@@ -668,7 +631,6 @@ toast-next-playlist = La playlist verrà riprodotta per prossima
 toast-queued-artist = Artista aggiunto alla coda
 toast-next-artist = L'artista verrà riprodotto per prossimo
 toast-queue-failed = Impossibile aggiungere alla coda
-toast-keys-refused = Spotify non concede chiavi di riproduzione a questo account
 toast-sign-in-to-play = { $name } trasmette solo agli ascoltatori connessi
 toast-track-unplayable = Impossibile riprodurre { $name }
 toast-library-add-failed = Impossibile aggiungere { $name } alla tua libreria
@@ -719,7 +681,6 @@ tags-comment = Commento
 toast-tags-saved = Tag salvati per { $name }
 toast-tags-failed = Impossibile salvare i tag
 nav-pin = Fissa
-toast-library-pin-failed = Impossibile aggiornare l'elemento fissato su Spotify.
 nav-nothing-pinned = Niente qui
 nav-pins-alphabetical = Alfabetico
 nav-pins-kind = Per tipo

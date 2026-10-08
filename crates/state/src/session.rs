@@ -1,31 +1,17 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::Error;
 use gpui::{Context, Entity, EventEmitter, Task};
-use i18n::t;
 use music::{
-    Capabilities, MusicApi, MusicProvider, PlaybackFactory, PromptSink, ProviderSession, Shape,
-    SignIn, SignInFailure, SignInProblem, SignInPrompt, UserProfile,
+    Capabilities, MusicApi, MusicProvider, PlaybackFactory, ProviderSession, Shape, SignIn,
+    SignInFailure, SignInProblem, UserProfile,
 };
-use tokio::sync::mpsc::UnboundedSender;
 
 use crate::Shelf;
 use crate::catalog::CatalogSource;
 use crate::settings::AppSettings;
 use crate::{Io, Network, join};
-
-const HEARTBEAT: Duration = Duration::from_secs(30);
-/// How often the sign-in window is asked whether the user is through.
-const WINDOW_POLL: Duration = Duration::from_millis(300);
-const BACKOFF: [Duration; 5] = [
-    Duration::ZERO,
-    Duration::from_secs(5),
-    Duration::from_secs(15),
-    Duration::from_secs(60),
-    Duration::from_secs(300),
-];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Failure {
@@ -64,7 +50,7 @@ impl Failure {
 pub enum SessionState {
     SignedOut,
     Restoring,
-    Authorizing(Option<SignInPrompt>),
+    Authorizing,
     SignedIn(UserProfile),
     /// The stored account could not be reached. It is still the user's, so nothing is signed
     /// out: the app stays on whatever the library kept and on the local files, and tries the
@@ -76,25 +62,14 @@ pub enum SessionState {
 pub enum SessionEvent {
     SignedIn,
     SignedOut,
-    Reconnected,
     LocalChanged,
-}
-
-#[derive(Clone, Copy)]
-enum SecretInput {
-    Browser,
-    Manual,
 }
 
 pub struct ProviderInfo {
     pub slug: &'static str,
     pub name: &'static str,
     pub options: Vec<SignIn>,
-    pub web_sign_in: bool,
-    pub protected: bool,
     pub stored: bool,
-    /// Whether what is stored is an anonymous session rather than an account.
-    pub guest: bool,
     pub active: bool,
     pub pending: bool,
     pub error: Option<Failure>,
@@ -116,11 +91,6 @@ pub struct Session {
     capabilities: Capabilities,
     io: Io,
     task: Option<Task<()>>,
-    prompt_task: Option<Task<()>>,
-    input: Option<UnboundedSender<String>>,
-    /// The browser window a `SignInPrompt::Secret` opened, while it is up.
-    window: Option<webview::Page>,
-    window_task: Option<Task<()>>,
     local_provider: Arc<dyn MusicProvider>,
     local_folders: Vec<PathBuf>,
     local_client: Option<Arc<dyn MusicApi>>,
@@ -130,10 +100,6 @@ pub struct Session {
     local_task: Option<Task<()>>,
     /// Whether a local scan is under way, so the UI can show its progress.
     scanning: bool,
-    watch: Option<Task<()>>,
-    reconnect: Option<Task<()>>,
-    reconnecting: bool,
-    attempt: usize,
 }
 
 impl EventEmitter<SessionEvent> for Session {}
@@ -168,10 +134,6 @@ impl Session {
             capabilities: Capabilities::NONE,
             io,
             task: None,
-            prompt_task: None,
-            input: None,
-            window: None,
-            window_task: None,
             local_provider,
             local_folders,
             local_client: None,
@@ -180,10 +142,6 @@ impl Session {
             local_capabilities: Capabilities::NONE,
             local_task: None,
             scanning: false,
-            watch: None,
-            reconnect: None,
-            reconnecting: false,
-            attempt: 0,
         };
         session.restore_local(cx);
         session
@@ -253,12 +211,7 @@ impl Session {
                 slug: provider.slug(),
                 name: provider.name(),
                 options: provider.sign_in_options(),
-                // Asked in this order because answering `supported` starts a child process once
-                // on Linux, and only a provider that signs in with cookies is worth it.
-                web_sign_in: provider.web_sign_in().is_some() && webview::supported(),
-                protected: provider.protected(),
                 stored: provider.stored(),
-                guest: provider.stored_guest(),
                 active: self.active == Some(index),
                 pending: self.awaiting == Some(index),
                 error: match &self.error {
@@ -270,17 +223,6 @@ impl Session {
 
     pub fn connected(&self) -> impl Iterator<Item = ProviderInfo> + '_ {
         self.providers().filter(|info| info.stored)
-    }
-
-    /// Whether the current provider's tracks need the Widevine module and it has an account.
-    /// A protected provider the user signed into but is not on right now does not count, so
-    /// nothing about the module is looked for or shown until they switch to it.
-    pub fn wants_drm(&self) -> bool {
-        let Some(index) = self.active else {
-            return false;
-        };
-        let provider = &self.providers[index];
-        provider.protected() && provider.stored()
     }
 
     pub fn forget(&mut self, slug: &str, cx: &mut Context<Self>) {
@@ -364,11 +306,6 @@ impl Session {
         self.authenticated
     }
 
-    /// Whether the active session is an anonymous guest session rather than an authenticated account.
-    pub fn guest(&self) -> bool {
-        self.client.is_some() && !self.authenticated
-    }
-
     /// What the live streaming provider can do beyond listing and playing. Nothing is offered
     /// while signed out, which is what the empty set means.
     pub fn capabilities(&self) -> Capabilities {
@@ -387,7 +324,7 @@ impl Session {
     pub fn is_pending(&self) -> bool {
         matches!(
             self.state,
-            SessionState::Restoring | SessionState::Authorizing(_)
+            SessionState::Restoring | SessionState::Authorizing
         )
     }
 
@@ -423,20 +360,6 @@ impl Session {
     }
 
     pub fn sign_in(&mut self, slug: &str, method: SignIn, cx: &mut Context<Self>) {
-        self.start_sign_in(slug, method, SecretInput::Browser, cx);
-    }
-
-    pub fn sign_in_with_cookies(&mut self, slug: &str, cx: &mut Context<Self>) {
-        self.start_sign_in(slug, SignIn::Secret, SecretInput::Manual, cx);
-    }
-
-    fn start_sign_in(
-        &mut self,
-        slug: &str,
-        method: SignIn,
-        secret_input: SecretInput,
-        cx: &mut Context<Self>,
-    ) {
         if self.is_pending() {
             return;
         }
@@ -453,64 +376,27 @@ impl Session {
         };
         self.error = None;
         self.awaiting = Some(index);
-        self.state = SessionState::Authorizing(None);
+        self.state = SessionState::Authorizing;
         cx.notify();
-
-        let (input_tx, input_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
-        self.input = Some(input_tx);
-        let (prompt_tx, mut prompt_rx) = tokio::sync::mpsc::unbounded_channel::<SignInPrompt>();
-        self.prompt_task = Some(cx.spawn(async move |this, cx| {
-            while let Some(prompt) = prompt_rx.recv().await {
-                this.update(cx, |this, cx| {
-                    if matches!(this.state, SessionState::Authorizing(_)) {
-                        let secret = matches!(prompt, SignInPrompt::Secret);
-                        this.state = SessionState::Authorizing(Some(prompt));
-                        cx.notify();
-                        if secret && matches!(secret_input, SecretInput::Browser) {
-                            this.open_window(cx);
-                        }
-                    }
-                })
-                .ok();
-            }
-        }));
-        let prompt: PromptSink = Arc::new(move |prompt| {
-            prompt_tx.send(prompt).ok();
-        });
 
         let provider = self.providers[index].clone();
         let io = self.io.clone();
         self.task = Some(cx.spawn(async move |this, cx| {
-            let authorized =
-                join(io.spawn(async move { provider.sign_in(method, prompt, input_rx).await }))
-                    .await;
+            let authorized = join(io.spawn(async move { provider.sign_in(method).await })).await;
 
-            this.update(cx, |this, cx| {
-                this.prompt_task = None;
-                this.input = None;
-                this.window = None;
-                match authorized {
-                    Ok(session) => this.signed_in(session, index, cx),
-                    Err(error) => this.failed(&error, cx),
-                }
+            this.update(cx, |this, cx| match authorized {
+                Ok(session) => this.signed_in(session, index, cx),
+                Err(error) => this.failed(&error, cx),
             })
             .ok();
         }));
     }
 
     pub fn cancel_sign_in(&mut self, cx: &mut Context<Self>) {
-        if !matches!(self.state, SessionState::Authorizing(_)) {
+        if !matches!(self.state, SessionState::Authorizing) {
             return;
         }
-        if let Some(index) = self.awaiting {
-            let provider = self.providers[index].clone();
-            self.io.spawn(async move { provider.abandon() });
-        }
         self.task = None;
-        self.prompt_task = None;
-        self.input = None;
-        self.window = None;
-        self.window_task = None;
         self.awaiting = None;
         self.error = None;
         if let Some((index, profile)) = self.resume.take() {
@@ -522,85 +408,6 @@ impl Session {
         self.state = SessionState::SignedOut;
         cx.notify();
         cx.emit(SessionEvent::SignedOut);
-    }
-
-    /// Opens the browser window for the secret prompt now showing. The window answers the prompt
-    /// itself once the user is through; closing it cancels the sign-in.
-    fn open_window(&mut self, cx: &mut Context<Self>) {
-        if !matches!(
-            self.state,
-            SessionState::Authorizing(Some(SignInPrompt::Secret))
-        ) || self.window.is_some()
-        {
-            return;
-        }
-        let Some(index) = self.awaiting else {
-            return;
-        };
-        let provider = &self.providers[index];
-        let Some(sign_in) = provider.web_sign_in() else {
-            return;
-        };
-        let target = webview::Target {
-            url: sign_in.url.to_string(),
-            landing: sign_in.landing.to_string(),
-            domain: sign_in.domain.to_string(),
-            proof: sign_in.proof.iter().map(ToString::to_string).collect(),
-            title: t!("login-window-title", provider = provider.name()).to_string(),
-            agent: sign_in.agent.map(str::to_owned),
-            script: None,
-        };
-        match webview::Page::open(target) {
-            Ok(login) => self.window = Some(login),
-            Err(error) => {
-                log::warn!("session: cannot open the sign-in window: {error:#}");
-                // Dropping the provider's task closes its prompt channel, which ends the prompt
-                // task on its own; this runs inside that task, so it must not drop it here.
-                self.task = None;
-                self.input = None;
-                return self.failed(&error, cx);
-            }
-        }
-        self.window_task = Some(cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor().timer(WINDOW_POLL).await;
-                let open = this.update(cx, |this, cx| {
-                    let Some(login) = this.window.as_mut() else {
-                        return false;
-                    };
-                    match login.poll() {
-                        webview::Poll::Pending => true,
-                        webview::Poll::Closed => {
-                            this.window = None;
-                            this.cancel_sign_in(cx);
-                            false
-                        }
-                        webview::Poll::Cookies(header) => {
-                            this.window = None;
-                            this.submit_input(header, cx);
-                            false
-                        }
-                    }
-                });
-                if !open.unwrap_or(false) {
-                    break;
-                }
-            }
-        }));
-    }
-
-    pub fn submit_input(&mut self, text: String, cx: &mut Context<Self>) {
-        if let Some(input) = &self.input {
-            self.window = None;
-            input.send(text).ok();
-            if let SessionState::Authorizing(Some(
-                SignInPrompt::Secret | SignInPrompt::Accounts(_),
-            )) = &self.state
-            {
-                self.state = SessionState::Authorizing(None);
-                cx.notify();
-            }
-        }
     }
 
     pub fn sign_out(&mut self, cx: &mut Context<Self>) {
@@ -637,14 +444,6 @@ impl Session {
 
     fn release(&mut self, cx: &mut Context<Self>) {
         self.task = None;
-        self.watch = None;
-        self.reconnect = None;
-        self.reconnecting = false;
-        self.attempt = 0;
-        self.prompt_task = None;
-        self.input = None;
-        self.window = None;
-        self.window_task = None;
         self.awaiting = None;
         self.resume = None;
         self.client = None;
@@ -680,8 +479,6 @@ impl Session {
         self.authenticated = session.authenticated;
         self.capabilities = session.capabilities;
         self.state = SessionState::SignedIn(session.profile);
-        self.attempt = 0;
-        self.start_heartbeat(cx);
         cx.notify();
         cx.emit(SessionEvent::SignedIn);
     }
@@ -693,81 +490,7 @@ impl Session {
         self.shape = Shape::Saved;
         self.authenticated = false;
         self.capabilities = Capabilities::NONE;
-        self.watch = None;
-        self.reconnect = None;
-        self.reconnecting = false;
-        self.attempt = 0;
         cx.emit(SessionEvent::SignedOut);
-    }
-
-    fn start_heartbeat(&mut self, cx: &mut Context<Self>) {
-        self.watch = Some(cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor().timer(HEARTBEAT).await;
-                if this
-                    .update(cx, |this, cx| this.reconnect_if_stale(cx))
-                    .is_err()
-                {
-                    return;
-                }
-            }
-        }));
-    }
-
-    pub fn reconnect_if_stale(&mut self, cx: &mut Context<Self>) -> bool {
-        if self.reconnecting {
-            return true;
-        }
-        if !matches!(self.state, SessionState::SignedIn(_)) {
-            return false;
-        }
-        let Some(client) = &self.client else {
-            return false;
-        };
-        if client.alive() {
-            self.attempt = 0;
-            return false;
-        }
-        let Some(active) = self.active else {
-            return false;
-        };
-        let wait = BACKOFF[self.attempt.min(BACKOFF.len() - 1)];
-        self.attempt += 1;
-        self.reconnecting = true;
-        log::warn!(
-            "session: the {} session went stale, reconnecting in {}s",
-            self.providers[active].name(),
-            wait.as_secs()
-        );
-        let provider = self.providers[active].clone();
-        let io = self.io.clone();
-        self.reconnect = Some(cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(wait).await;
-            let restored = join(io.spawn(async move { provider.restore().await })).await;
-            this.update(cx, |this, cx| {
-                this.reconnecting = false;
-                match restored {
-                    Ok(Some(session)) => this.reconnected(session, cx),
-                    Ok(None) => log::warn!("session: nothing stored to reconnect with"),
-                    Err(error) => log::warn!("session: cannot reconnect: {error:#}"),
-                }
-            })
-            .ok();
-        }));
-        true
-    }
-
-    fn reconnected(&mut self, session: ProviderSession, cx: &mut Context<Self>) {
-        self.attempt = 0;
-        self.catalog = Some(Arc::new(CatalogSource::new(session.api.clone())));
-        self.client = Some(session.api);
-        self.playback = Some(session.playback);
-        self.shape = session.shape;
-        self.authenticated = session.authenticated;
-        self.capabilities = session.capabilities;
-        log::debug!("session: reconnected");
-        cx.notify();
-        cx.emit(SessionEvent::Reconnected);
     }
 
     fn failed(&mut self, error: &Error, cx: &mut Context<Self>) {
@@ -880,12 +603,8 @@ impl Session {
         self.scanning = true;
         cx.notify();
         self.local_task = Some(cx.spawn(async move |this, cx| {
-            let prompt: PromptSink = Arc::new(|_| {});
-            let (_tx, rx) = tokio::sync::mpsc::unbounded_channel::<String>();
-            let signed_in = join(
-                io.spawn(async move { provider.sign_in(SignIn::Path(folders), prompt, rx).await }),
-            )
-            .await;
+            let signed_in =
+                join(io.spawn(async move { provider.sign_in(SignIn::Path(folders)).await })).await;
 
             this.update(cx, |this, cx| {
                 this.scanning = false;

@@ -158,15 +158,7 @@ menu-rename-playlist = Renombrar lista
 menu-delete-playlist = Eliminar lista
 menu-add-playlist-to-library = Añadir a la biblioteca
 menu-remove-playlist-from-library = Quitar de la biblioteca
-menu-library-add = Añadir a la biblioteca
-menu-library-add-tracks = { $count ->
-    [one] Añadir { $count } pista a la biblioteca
-   *[other] Añadir { $count } pistas a la biblioteca
 }
-menu-library-remove = Quitar de la biblioteca
-menu-library-remove-tracks = { $count ->
-    [one] Quitar { $count } pista de la biblioteca
-   *[other] Quitar { $count } pistas de la biblioteca
 }
 menu-make-playlist-public = Hacer pública
 menu-make-playlist-private = Hacer privada
@@ -270,51 +262,18 @@ tool-filters = Filtros
 # login
 login-signed-out = Inicia sesión para cargar tu biblioteca musical
 login-restoring = Comprobando tu sesión guardada…
-login-authorizing = Esperando la autorización en tu navegador…
+login-authorizing = Conectando con tu cuenta…
 login-signed-in = Sesión iniciada como { $name }
 login-failed-title = No se pudo iniciar sesión
-login-problem-region = Spotify no abre una sesión desde el país en el que estás. Inicia sesión desde tu país de origen o cambia el país en tu cuenta de Spotify.
-login-problem-credentials = Tu sesión guardada de Spotify ya no es válida. Inicia sesión de nuevo para continuar.
 login-problem-network = Sonora no pudo conectarse con el servicio de música. Revisa tu conexión a internet e inténtalo de nuevo.
-login-problem-cancelled = Cerraste la página del navegador antes de aprobar el inicio de sesión. Empieza de nuevo para terminar.
-login-problem-refused = Spotify rechazó el inicio de sesión. Espera un momento e inténtalo de nuevo.
-login-problem-premium = Sonora reproduce a través de Spotify Premium y esta cuenta no lo tiene. Inicia sesión con una cuenta Premium para continuar.
 login-sign-in = Iniciar sesión con { $provider }
-login-connect-cookies = Pegar las cookies manualmente
-login-cookie-open = Abrir { $provider }
-login-cookie-submit = Continuar
-login-cookie-hint = Pega aquí el encabezado de solicitud Cookie
-login-cookie-step-1 = Abre music.youtube.com y comprueba que has iniciado sesión. Funciona mejor en una ventana de incógnito.
-login-cookie-step-2 = Pulsa F12, abre la pestaña Red y recarga la página.
-login-cookie-step-3 = Selecciona cualquier solicitud llamada "browse" o "next".
-login-cookie-step-4 = En Encabezados, busca Cookie dentro de los encabezados de solicitud, haz clic derecho y copia su valor.
-login-cookie-step-note = Pega el valor completo abajo: el panel de cookies de la solicitud no basta, porque el valor tiene que llevar SAPISID y __Secure-3PAPISID.
-login-cookie-header-title = Pega las cookies de { $provider } para terminar de iniciar sesión
-login-cookie-apple-step-3 = Selecciona cualquier solicitud a { $site }.
-login-cookie-apple-note = Asegúrate de pegar el valor completo, incluido { $cookie }.
-login-cookie-named-title = Pega la cookie de { $provider } para terminar de iniciar sesión
-login-cookie-named-hint = Pega aquí el valor de la cookie
-login-cookie-named-step-1 = Abre { $site } y comprueba que has iniciado sesión.
-login-cookie-named-step-2 = Pulsa F12 y abre la pestaña Almacenamiento en Firefox, o la pestaña Aplicación en Chrome.
-login-cookie-named-step-3 = Despliega Cookies, selecciona { $site } y busca la cookie llamada { $cookie }.
-login-cookie-named-step-4 = Haz doble clic en su valor y cópialo.
-login-cookie-named-note = Basta con el valor de { $cookie }. También sirve un encabezado Cookie completo copiado desde la pestaña Red.
-login-window-title = Iniciar sesión en { $provider }
-login-use = Usar { $provider }
-login-guest-title = Modo invitado
-login-guest-use = Usar el modo invitado
-login-guest-detail = Explora y reproduce sin una cuenta. Tu biblioteca, tus favoritos y tus listas quedan fuera de alcance.
 login-usage-consent = Ayúdanos a estimar cuánta gente usa Sonora.
-login-device-code = Introduce este código en { $url }
 login-server-title = Conéctate a tu servidor Subsonic
 login-server-detail = Introduce la dirección de cualquier servidor Subsonic u OpenSubsonic (Navidrome, Airsonic, Gonic, …) e inicia sesión con tu nombre de usuario y contraseña del servidor. La sesión permanece en este dispositivo.
 login-server-hint = https://music.example.com
 login-username-hint = Nombre de usuario
 login-password-hint = Contraseña
 login-server-submit = Conectar
-login-account-title = Elige una cuenta
-login-account-detail = Esta sesión tiene iniciada la sesión en más de una cuenta de Google. Elige la que debe usar Sonora.
-
 # album and playlist pages
 detail-playlist = Lista de reproducción
 detail-play-album = Reproducir álbum
@@ -345,18 +304,6 @@ artist-filter-all = Todo
 artist-filter-albums = Álbumes
 artist-filter-singles = Sencillos
 artist-filter-eps = EP
-
-# user profile page
-user-eyebrow = Perfil
-user-followers = { $count ->
-    [one] { $value } seguidor
-   *[other] { $value } seguidores
-}
-user-following = { $count ->
-   *[other] { $value } siguiendo
-}
-user-playlists = Listas públicas
-user-playlists-empty = Todavía no hay listas públicas
 
 # release kinds
 release-album = Álbum
@@ -586,30 +533,6 @@ settings-sleep-configure = Configurar…
 settings-sleep-off = Desactivado
 settings-sleep-end-of-track = Fin de pista
 settings-sleep-minutes = { $count } min
-settings-widevine = Módulo Widevine
-settings-widevine-detail = Las pistas de Apple Music están cifradas y necesitan el módulo Widevine de Google. Sonora usa la copia que ya tiene un navegador de este equipo, o una que descargó de Google con tu consentimiento.
-settings-widevine-none = Las pistas de Apple Music están cifradas y necesitan el módulo Widevine de Google. Ningún navegador de este equipo lo tiene, así que Sonora puede descargarlo de Google con tu consentimiento.
-settings-widevine-looking = Buscando…
-settings-widevine-asking = Esperando tu respuesta
-settings-widevine-fetching = Descargando…
-settings-widevine-installing = Instalando…
-settings-widevine-installed = Encontrado en un navegador
-settings-widevine-fetched = Descargado de Google
-settings-widevine-missing = No instalado
-settings-widevine-configured = Definido por el entorno
-settings-widevine-fetch = Descargar
-settings-widevine-uninstall = Desinstalar
-confirm-uninstall-widevine-title = ¿Desinstalar el módulo Widevine?
-confirm-uninstall-widevine = Sonora eliminará la copia que descargó de Google. Las pistas de Apple Music dejarán de reproducirse hasta que se vuelva a descargar.
-widevine-prompt-title = Módulo Widevine
-widevine-prompt-wanted = Las pistas de Apple Music están cifradas y necesitan el módulo Widevine de Google. Ningún navegador de este equipo lo tiene. Sonora puede descargarlo de los servidores de Google, el mismo archivo que instala Chrome, y guardarlo en su propia carpeta.
-widevine-prompt-downloading = Descargando…
-widevine-prompt-terms = Se descargó la versión { $version }. Instalarlo implica aceptar los términos de Google para el módulo:
-widevine-prompt-installing = Instalando…
-widevine-prompt-download = Descargar
-widevine-prompt-later = Ahora no
-widevine-prompt-accept = Aceptar e instalar
-widevine-prompt-decline = Rechazar
 settings-equalizer = Ecualizador
 settings-equalizer-detail = Da forma al sonido en diez bandas, una por octava
 settings-equalizer-preset = Preajuste
@@ -646,9 +569,6 @@ settings-lyrics-providers-selected = { $count ->
    *[other] { $count } seleccionados
     }
 settings-lyrics-provider-local = Archivos locales
-settings-lyrics-provider-spotify = Spotify
-settings-lyrics-provider-youtube = YouTube Music
-settings-lyrics-provider-apple-music = Apple Music
 settings-lyrics-provider-musixmatch = Musixmatch
 settings-lyrics-provider-lrclib = LRCLIB
 settings-lyrics-provider-kugou = Kugou
@@ -686,7 +606,6 @@ settings-accounts-detail = Los servicios desde los que puede reproducir este dis
 settings-provider-none = Sin conectar
 settings-provider-connected = Conectado
 settings-provider-current = Reproduciendo desde este servicio
-settings-provider-guest = Reproduciendo como invitado
 settings-provider-switch = Cambiar a
 settings-sign-out = Cerrar sesión
 settings-group-scrobbling = Scrobbling
@@ -731,7 +650,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = Responsable principal
 settings-role-maintainer = Responsable
 settings-role-contributor = Colaborador
-settings-notice = Copyright © 2026 Sonora Contributors. Sonora se distribuye sin ninguna garantía. Es software libre y puedes redistribuirlo según los términos de la Licencia Pública General de GNU, versión 3 o posterior. Sonora es un cliente no oficial y no está afiliado a Spotify AB.
 
 # themes
 theme-system = Sistema
@@ -783,15 +701,11 @@ toast-next-playlist = La lista suena a continuación
 toast-queued-artist = El artista se añadió a la cola
 toast-next-artist = El artista suena a continuación
 toast-queue-failed = No se pudo añadir eso a la cola
-toast-keys-refused = Spotify no le está dando claves de reproducción a esta cuenta
 toast-sign-in-to-play = { $name } solo se reproduce con la sesión iniciada
 toast-track-unplayable = No se pudo reproducir { $name }
 toast-library-add-failed = No se pudo añadir { $name } a tu biblioteca
 toast-library-remove-failed = No se pudo quitar { $name } de tu biblioteca
 toast-rating-failed = No se pudo valorar { $name }
-toast-library-added = Añadido a tu biblioteca
-toast-library-removed = Quitado de tu biblioteca
-
 # lyrics
 lyrics-title = Letra
 lyrics-idle = Reproduce algo para ver su letra
@@ -842,7 +756,6 @@ toast-tags-failed = No se pudieron guardar las etiquetas
 toast-tray-unavailable = No hay ninguna bandeja del sistema donde poner el icono
 
 nav-pin = Fijar
-toast-library-pin-failed = No se pudo actualizar el elemento fijado en Spotify.
 nav-nothing-pinned = No hay nada aquí
 nav-pins-alphabetical = Alfabético
 nav-pins-kind = Por tipo

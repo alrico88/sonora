@@ -15,7 +15,7 @@ finish-args:
   - --device=dri # GPU acceleration
   - --share=network # Internet access
   - --share=ipc
-  - --filesystem=xdg-run/pipewire-0:ro # Spotify flatpak has this
+  - --filesystem=xdg-run/pipewire-0:ro
   # Open With passes an arbitrary path as argv; a plain Exec launch (unlike a portal file-open)
   # gets no per-file bind mount, so reading it needs read access to the whole host.
   - --filesystem=host:ro
@@ -25,7 +25,7 @@ finish-args:
   - --filesystem=xdg-run/discord-ipc-0
   - --filesystem=xdg-run/app/com.discordapp.Discord:create
 
-  # Session Bus Permissions (Same as Spotify flatpak):
+  # Session Bus Permissions:
   - --talk-name=org.gnome.SettingsDaemon.MediaKeys
   - --talk-name=org.freedesktop.ScreenSaver
   - --talk-name=org.kde.StatusNotifierWatcher

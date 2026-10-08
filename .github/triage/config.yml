@@ -19,13 +19,10 @@ labels:
   search: the search field and what it returns
   settings: the settings screen, stored preferences, the updater
   ui: rendering, layout, theming, fonts, the window and its chrome
-  spotify: signing in to Spotify, its library, its search, or anything its backend returns
-  youtube: signing in to YouTube Music, its library, its search, or its backend
   subsonic: a Subsonic or Navidrome server
   local: the local music folder, scanning, tags, embedded artwork, local playlists
   i18n: a translation, a missing string, a wrong plural or locale selection, and nothing else
   icons: the icon packs
-  webview: the cookie sign-in browser window
   nix: the flake, the devShell, building under Nix
   packaging: Flatpak, AUR, Homebrew, the disk image, the Windows installer, updates
   ci: the release workflow or anything else under .github
@@ -37,7 +34,7 @@ platforms:
 
 people:
   nolight132:
-    areas: [question, spotify, ui, lyrics, player, playback, packaging, settings, ci]
+    areas: [question, subsonic, ui, lyrics, player, playback, packaging, settings, ci]
     hardware: [linux, pipewire, wayland, niri]
 
   zxsleebu:
@@ -49,7 +46,7 @@ people:
     hardware: [linux, wayland, niri, pipewire]
 
   fx-got:
-    areas: [youtube, spotify, library, player, settings, ui]
+    areas: [subsonic, library, player, settings, ui]
     hardware: [windows]
 
   Makakashan:

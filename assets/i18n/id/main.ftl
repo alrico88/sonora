@@ -246,40 +246,18 @@ tool-filters = Filter
 # login
 login-signed-out = Masuk untuk memuat koleksi musik Anda
 login-restoring = Memeriksa sesi yang tersimpan…
-login-authorizing = Menunggu otorisasi di peramban…
+login-authorizing = Menghubungkan ke akun Anda…
 login-signed-in = Masuk sebagai { $name }
 login-failed-title = Gagal masuk
-login-problem-region = Spotify tidak mendukung sesi dari wilayah tempat Anda berada saat ini. Masuk dari negara asal Anda, atau ubah pengaturan negara di akun Spotify Anda.
-login-problem-credentials = Sesi Spotify yang tersimpan sudah tidak berlaku. Masuk kembali untuk melanjutkan.
 login-problem-network = Sonora tidak dapat terhubung ke layanan musik. Periksa koneksi internet Anda dan coba lagi.
-login-problem-cancelled = Halaman peramban ditutup sebelum otorisasi selesai. Silakan coba lagi.
-login-problem-refused = Spotify menolak permintaan masuk. Tunggu beberapa saat dan coba lagi.
-login-problem-premium = Sonora memerlukan akun Spotify Premium untuk streaming. Akun ini tidak memiliki langganan Premium. Masuk dengan akun Premium untuk melanjutkan.
 login-sign-in = Masuk dengan { $provider }
-login-connect-cookies = Tempel cookie manual
-login-cookie-submit = Lanjutkan
-login-cookie-hint = Tempel header Cookie permintaan di sini
-login-cookie-step-1 = Buka music.youtube.com dan pastikan Anda sudah masuk.
-login-cookie-step-2 = Tekan F12, buka tab Network, lalu muat ulang halaman.
-login-cookie-step-3 = Pilih permintaan apa pun yang bernama "browse" atau "next".
-login-cookie-step-4 = Di bagian Headers, cari Cookie di bawah Request Headers, klik kanan, lalu salin nilainya.
-login-cookie-step-note = Pastikan untuk menyalin seluruh isinya, termasuk SAPISID dan __Secure-3PAPISID.
-login-window-title = Masuk ke { $provider }
-login-use = Gunakan { $provider }
-login-guest-title = Mode Tamu
-login-guest-use = Gunakan Mode Tamu
-login-guest-detail = Jelajahi dan putar musik tanpa akun. Koleksi, favorit, dan playlist Anda tidak dapat diakses.
 login-usage-consent = Bantu kami memperkirakan jumlah pengguna aktif Sonora.
-login-device-code = Masukkan kode ini di { $url }
 login-server-title = Hubungkan ke server Subsonic Anda
 login-server-detail = Masukkan alamat server Subsonic atau OpenSubsonic (Navidrome, Airsonic, Gonic, …), lalu masuk dengan nama pengguna dan kata sandi server Anda. Sesi hanya disimpan di perangkat ini.
 login-server-hint = https://music.contoh.com
 login-username-hint = Nama pengguna
 login-password-hint = Kata sandi
 login-server-submit = Hubungkan
-login-account-title = Pilih akun
-login-account-detail = Sesi ini terhubung ke lebih dari satu akun Google. Pilih akun yang ingin digunakan Sonora.
-
 # album and playlist pages
 detail-playlist = Playlist
 detail-play-album = Putar album
@@ -309,18 +287,6 @@ artist-filter-all = Semua
 artist-filter-albums = Album
 artist-filter-singles = Single
 artist-filter-eps = EP
-
-# user profile page
-user-eyebrow = Profil
-user-followers = { $count ->
-    [one] { $value } pengikut
-   *[other] { $value } pengikut
-}
-user-following = { $count ->
-   *[other] { $value } mengikuti
-}
-user-playlists = Playlist publik
-user-playlists-empty = Belum ada playlist publik
 
 # release kinds
 release-album = Album
@@ -593,7 +559,6 @@ settings-accounts-detail = Layanan musik yang dapat diputar dari perangkat ini
 settings-provider-none = Tidak terhubung
 settings-provider-connected = Terhubung
 settings-provider-current = Sedang memutar dari layanan ini
-settings-provider-guest = Memutar sebagai tamu
 settings-provider-switch = Beralih ke
 settings-sign-out = Keluar
 settings-local-folder = Folder musik lokal
@@ -616,7 +581,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = Pemelihara Utama
 settings-role-maintainer = Pemelihara
 settings-role-contributor = Kontributor
-settings-notice = Hak cipta © 2026 Sonora Contributors. Sonora hadir tanpa jaminan apa pun. Ini adalah perangkat lunak bebas, dan Anda dipersilakan untuk mendistribusikannya kembali sesuai dengan ketentuan GNU General Public License versi 3 atau yang lebih baru. Sonora bersifat tidak resmi dan tidak berafiliasi dengan Spotify AB.
 
 # themes
 theme-system = System
@@ -667,13 +631,10 @@ toast-next-playlist = Playlist akan diputar berikutnya
 toast-queued-artist = Artis ditambahkan ke antrean
 toast-next-artist = Artis akan diputar berikutnya
 toast-queue-failed = Item tidak dapat ditambahkan ke antrean
-toast-keys-refused = Spotify tidak memberikan izin kunci pemutaran untuk akun ini
 toast-sign-in-to-play = { $name } hanya dapat diputar untuk pendengar yang sudah masuk akun
 toast-track-unplayable = { $name } tidak dapat diputar
 toast-library-add-failed = { $name } tidak dapat ditambahkan ke koleksi Anda
 toast-library-remove-failed = { $name } tidak dapat dihapus dari koleksi Anda
-toast-library-pin-failed = Gagal memperbarui sematan di Spotify.
-
 # lyrics
 lyrics-title = Lirik
 lyrics-idle = Putar lagu untuk melihat liriknya

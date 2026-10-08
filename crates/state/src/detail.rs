@@ -43,11 +43,9 @@ pub struct Detail {
     album: Option<Album>,
     playlist: Option<Playlist>,
     tracks: Vec<Track>,
-    continuation: Option<String>,
     also_like: Vec<Album>,
     similar: Vec<SavedArtist>,
     loading: bool,
-    loading_more: bool,
     loaded: bool,
     filling: bool,
     error: Option<String>,
@@ -87,7 +85,6 @@ impl Detail {
                     }
                 }
             }
-            SessionEvent::Reconnected => {}
             SessionEvent::LocalChanged => {
                 if let (Some(kind), Some(id)) = (
                     this.kind,
@@ -158,11 +155,9 @@ impl Detail {
             album: None,
             playlist: None,
             tracks: Vec::new(),
-            continuation: None,
             also_like: Vec::new(),
             similar: Vec::new(),
             loading: false,
-            loading_more: false,
             loaded: false,
             filling: false,
             error: None,
@@ -218,59 +213,6 @@ impl Detail {
 
     pub fn is_loading(&self) -> bool {
         self.loading
-    }
-
-    /// Appends provider pages in sequence while keeping the first page immediately usable.
-    fn load_more(&mut self, cx: &mut Context<Self>) {
-        if self.loading_more {
-            return;
-        }
-        let Some(continuation) = self.continuation.clone() else {
-            return;
-        };
-        let Some(id) = self.id.as_deref() else {
-            return;
-        };
-        let Some(catalog) = self.session.read(cx).catalog(id) else {
-            return;
-        };
-
-        self.loading_more = true;
-        cx.notify();
-
-        let request = self
-            .io
-            .spawn(async move { catalog.playlist_continuation(&continuation).await });
-        self.request = Some(request.abort_handle());
-        self.task = Some(cx.spawn(async move |this, cx| {
-            let loaded = join(request).await;
-            this.update(cx, |this, cx| {
-                this.loading_more = false;
-                this.request = None;
-                match loaded {
-                    Ok((tracks, continuation)) => {
-                        let offset = this.tracks.len() as u32;
-                        this.tracks.extend(tracks.into_iter().enumerate().map(
-                            |(index, mut track)| {
-                                track.track_number = offset + index as u32 + 1;
-                                track
-                            },
-                        ));
-                        this.continuation = continuation;
-                        if let Some(playlist) = this.playlist.as_mut()
-                            && playlist.track_count < this.tracks.len() as u32
-                        {
-                            playlist.track_count = this.tracks.len() as u32;
-                            this.header = Some(playlist_header(playlist));
-                        }
-                        this.load_more(cx);
-                    }
-                    Err(error) => log::warn!("detail: cannot load more playlist tracks: {error:#}"),
-                }
-                cx.notify();
-            })
-            .ok();
-        }));
     }
 
     pub fn remove_from_playlist(&mut self, track_id: String, cx: &mut Context<Self>) {
@@ -461,7 +403,6 @@ impl Detail {
                     })
                     .cloned()
                     .collect();
-                self.continuation = None;
                 self.fill(cx);
             }
             Loaded::Playlist(detail) => {
@@ -475,11 +416,9 @@ impl Detail {
                 self.header = Some(playlist_header(&playlist));
                 self.playlist = Some(playlist);
                 self.tracks = detail.tracks.clone();
-                self.continuation = detail.continuation.clone();
             }
         }
         self.loaded = true;
-        self.load_more(cx);
     }
 
     fn clear(&mut self) {
@@ -498,11 +437,9 @@ impl Detail {
         self.album = None;
         self.playlist = None;
         self.tracks.clear();
-        self.continuation = None;
         self.also_like.clear();
         self.similar.clear();
         self.loading = false;
-        self.loading_more = false;
         self.loaded = false;
         self.filling = false;
         self.error = None;

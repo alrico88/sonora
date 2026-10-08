@@ -156,15 +156,7 @@ menu-rename-playlist = Riemërto listën e luajtjes
 menu-delete-playlist = Fshi listën e luajtjes
 menu-add-playlist-to-library = Shto te Biblioteka
 menu-remove-playlist-from-library = Hiq nga Biblioteka
-menu-library-add = Shto te Biblioteka
-menu-library-add-tracks = { $count ->
-    [one] Shto { $count } këngë te Biblioteka
-   *[other] Shto { $count } këngë te Biblioteka
 }
-menu-library-remove = Hiq nga Biblioteka
-menu-library-remove-tracks = { $count ->
-    [one] Hiq { $count } këngë nga Biblioteka
-   *[other] Hiq { $count } këngë nga Biblioteka
 }
 menu-make-playlist-public = Bëje publike
 menu-make-playlist-private = Bëje private
@@ -269,53 +261,18 @@ tool-filters = Filtra
 # login
 login-signed-out = Hyr për të ngarkuar bibliotekën e muzikës
 login-restoring = Duke kontrolluar seancën e ruajtur…
-login-authorizing = Duke pritur autorizimin në shfletues…
+login-authorizing = Duke u lidhur me llogarinë…
 login-signed-in = I lidhur si { $name }
 login-failed-title = Hyrja dështoi
-login-problem-region = Spotify nuk hap një seancë nga vendi ku ndodhesh. Hyr nga vendi yt i origjinës, ose ndrysho vendin në llogarinë Spotify.
-login-problem-credentials = Seanca e ruajtur e Spotify nuk është më e vlefshme. Hyr përsëri për të vazhduar.
 login-problem-network = Sonora nuk mund të lidhej me shërbimin muzikor. Kontrollo lidhjen e internetit dhe provo përsëri.
-login-problem-cancelled = Mbyllët faqen e shfletuesit para se të miratoje hyrjen. Filloni përsëri për të përfunduar.
-login-problem-refused = Spotify refuzoi hyrjen. Prit pak dhe provo përsëri.
-login-problem-premium = Sonora transmeton përmes Spotify Premium, dhe kjo llogari nuk e ka. Hyr me një llogari Premium për të vazhduar.
 login-sign-in = Hyr me { $provider }
-login-connect-cookies = Ngjit cookies manualisht
-login-cookie-open = Hap { $provider }
-login-cookie-submit = Vazhdo
-login-cookie-hint = Ngjit këtu header-in Cookie të kërkesës
-login-cookie-step-1 = Hap music.youtube.com dhe sigurohu që je i lidhur. Një dritare inkognito funksionon më mirë.
-login-cookie-step-2 = Shtyp F12, hap skedën Network dhe ringarko faqen.
-login-cookie-step-3 = Zgjidh çdo kërkesë me emrin "browse" ose "next".
-login-cookie-step-4 = Te Headers, gjej Cookie nën Request Headers, kliko me të djathtën dhe kopjo vlerën.
-login-cookie-step-note = Sigurohu që të ngjitësh të gjithë vlerën, përfshirë SAPISID dhe __Secure-3PAPISID.
-login-cookie-header-title = Ngjit cookies e { $provider } për të përfunduar hyrjen
-login-cookie-apple-step-3 = Zgjidh çdo kërkesë drejt { $site }.
-login-cookie-apple-note = Sigurohu që të ngjitësh të gjithë vlerën, përfshirë { $cookie }.
-login-cookie-named-title = Ngjit cookie-n e { $provider } për të përfunduar hyrjen
-login-cookie-named-hint = Ngjit këtu vlerën e cookie-t
-login-cookie-named-step-1 = Hap { $site } dhe sigurohu që je i lidhur.
-login-cookie-named-step-2 = Shtyp F12 dhe hap skedën Storage në Firefox, ose skedën Application në Chrome.
-login-cookie-named-step-3 = Zgjero Cookies, zgjidh { $site } dhe gjej cookie-n me emrin { $cookie }.
-login-cookie-named-step-4 = Kliko dy herë vlerën dhe kopjoje.
-login-cookie-named-note = Vetëm vlera e { $cookie } mjafton. Edhe një header i plotë Cookie i kopjuar nga skeda Network funksionon.
-login-window-title = Hyr te { $provider }
-login-use = Përdor { $provider }
-login-guest-title = Modaliteti mysafir
-login-guest-use = Përdor modalitetin mysafir
-login-guest-detail = Shfleto dhe luaj pa llogari. Biblioteka, pëlqimet dhe listat e luajtjes mbeten të paarritshme.
 login-usage-consent = Na ndihmo të vlerësojmë sa njerëz përdorin Sonora.
-login-device-code = Shkruaj këtë kod te { $url }
 login-server-title = Lidhu me serverin tënd Subsonic
 login-server-detail = Shkruaj adresën e çdo serveri Subsonic ose OpenSubsonic (Navidrome, Airsonic, Gonic, …), pastaj hy me emrin e përdoruesit dhe fjalëkalimin e serverit. Seanca mbetet në këtë pajisje.
 login-server-hint = https://music.example.com
 login-username-hint = Emri i përdoruesit
 login-password-hint = Fjalëkalimi
 login-server-submit = Lidhu
-login-account-title = Zgjidh një llogari
-login-account-detail = Kjo seancë është e lidhur me më shumë se një llogari Google. Zgjidh atë që Sonora duhet të përdorë.
-login-choose-title = Hyr te { $provider }
-login-choose-detail = Zgjidh se si të hysh te { $provider }.
-
 # album and playlist pages
 detail-playlist = Listë luajtjeje
 detail-play-album = Luaj albumin
@@ -345,18 +302,6 @@ artist-filter-all = Të gjitha
 artist-filter-albums = Albume
 artist-filter-singles = Single
 artist-filter-eps = EP
-
-# user profile page
-user-eyebrow = Profili
-user-followers = { $count ->
-    [one] { $value } ndjekës
-   *[other] { $value } ndjekës
-}
-user-following = { $count ->
-   *[other] { $value } duke ndjekur
-}
-user-playlists = Lista publike luajtjeje
-user-playlists-empty = Ende asnjë listë publike luajtjeje
 
 # release kinds
 release-album = Album
@@ -575,30 +520,6 @@ settings-sleep-configure = Konfiguro…
 settings-sleep-off = Fikur
 settings-sleep-end-of-track = Në fund të këngës
 settings-sleep-minutes = { $count } min
-settings-widevine = Moduli Widevine
-settings-widevine-detail = Këngët e Apple Music janë të enkriptuara dhe kanë nevojë për modulin Widevine të Google. Sonora përdor kopjen që një shfletues këtu ka tashmë, ose një që e shkarkoi nga Google me pëlqimin tënd.
-settings-widevine-none = Këngët e Apple Music janë të enkriptuara dhe kanë nevojë për modulin Widevine të Google. Asnjë shfletues këtu nuk e ka, kështu që Sonora mund ta shkarkojë nga Google me pëlqimin tënd.
-settings-widevine-looking = Duke kërkuar…
-settings-widevine-asking = Duke pritur përgjigjen tënde
-settings-widevine-fetching = Duke shkarkuar…
-settings-widevine-installing = Duke instaluar…
-settings-widevine-installed = U gjet në një shfletues
-settings-widevine-fetched = U shkarkua nga Google
-settings-widevine-missing = Nuk është instaluar
-settings-widevine-configured = Caktuar nga mjedisi
-settings-widevine-fetch = Shkarko
-settings-widevine-uninstall = Çinstalo
-confirm-uninstall-widevine-title = Të çinstalohet moduli Widevine?
-confirm-uninstall-widevine = Sonora fshin kopjen që shkarkoi nga Google. Këngët e Apple Music ndalojnë së luajturi derisa të shkarkohet përsëri.
-widevine-prompt-title = Moduli Widevine
-widevine-prompt-wanted = Këngët e Apple Music janë të enkriptuara dhe kanë nevojë për modulin Widevine të Google. Asnjë shfletues në këtë kompjuter nuk e ka. Sonora mund ta shkarkojë nga serverët e Google, të njëjtin skedar që instalon Chrome, dhe ta mbajë në dosjen e vet.
-widevine-prompt-downloading = Duke shkarkuar…
-widevine-prompt-terms = Versioni { $version } u shkarkua. Instalimi i tij do të thotë pranimi i kushteve të Google për modulin:
-widevine-prompt-installing = Duke instaluar…
-widevine-prompt-download = Shkarko
-widevine-prompt-later = Jo tani
-widevine-prompt-accept = Prano dhe instalo
-widevine-prompt-decline = Refuzo
 settings-equalizer = Ekualizuesi
 settings-equalizer-detail = Formëson tingullin në dhjetë banda, një për oktavë
 settings-equalizer-preset = Paracaktimi
@@ -642,9 +563,6 @@ settings-lyrics-providers-selected = { $count ->
    *[other] { $count } të përzgjedhur
     }
 settings-lyrics-provider-local = Skedarë lokalë
-settings-lyrics-provider-spotify = Spotify
-settings-lyrics-provider-youtube = YouTube Music
-settings-lyrics-provider-apple-music = Apple Music
 settings-lyrics-provider-musixmatch = Musixmatch
 settings-lyrics-provider-lrclib = LRCLIB
 settings-lyrics-provider-kugou = Kugou
@@ -676,7 +594,6 @@ settings-accounts-detail = Shërbimet nga të cilat ky pajisje mund të luajë
 settings-provider-none = Nuk është i lidhur
 settings-provider-connected = I lidhur
 settings-provider-current = Duke luajtur nga ky shërbim
-settings-provider-guest = Duke luajtur si mysafir
 settings-provider-switch = Kalo te
 settings-sign-out = Dil
 settings-group-scrobbling = Scrobbling
@@ -724,7 +641,6 @@ settings-team-github = GitHub
 settings-role-lead-maintainer = Mirëmbajtës kryesor
 settings-role-maintainer = Mirëmbajtës
 settings-role-contributor = Kontribues
-settings-notice = Copyright © 2026 Sonora Contributors. Sonora vjen pa asnjë garanci. Është softuer i lirë, dhe mund ta rishpërndash sipas kushteve të GNU General Public License version 3 ose më vonë. Sonora është jozyrtare dhe nuk është e lidhur me Spotify AB.
 
 # themes
 theme-system = Sistemi
@@ -780,14 +696,10 @@ toast-queued-artist = Artisti u shtua në radhë
 toast-next-artist = Artisti luhet i radhës
 toast-last-artist = Artisti luhet i fundit
 toast-queue-failed = Nuk mund të shtohej në radhë
-toast-keys-refused = Spotify nuk po i jep kësaj llogarie çelësat e luajtjes
 toast-sign-in-to-play = { $name } transmeton vetëm për një dëgjues të lidhur
 toast-track-unplayable = { $name } nuk mund të luhej
 toast-library-add-failed = { $name } nuk mund të shtohej te biblioteka
 toast-library-remove-failed = { $name } nuk mund të hiqej nga biblioteka
-toast-library-added = U shtua te biblioteka
-toast-library-removed = U hoq nga biblioteka
-
 # lyrics
 lyrics-title = Tekstet
 lyrics-idle = Luaj diçka për të parë tekstet
@@ -837,7 +749,6 @@ toast-tags-saved = U ruajtën etiketat për { $name }
 toast-tags-failed = Etiketat nuk mund të ruheshin
 
 nav-pin = Fikso
-toast-library-pin-failed = Nuk mund të përditësohej fiksimi.
 nav-nothing-pinned = Asgjë këtu
 nav-pins-alphabetical = Alfabetike
 nav-pins-kind = Sipas llojit
