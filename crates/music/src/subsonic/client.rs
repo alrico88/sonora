@@ -307,8 +307,15 @@ impl MusicApi for SubsonicClient {
             .and_then(|info| info.biography)
             .filter(|bio| !bio.trim().is_empty());
 
+        // Navidrome matches several Last.fm variants of a title to the same file, so the top
+        // songs can repeat one id.
+        let mut seen = std::collections::HashSet::new();
         let mut top_tracks = match self.client.get_top_songs(&name, Some(20)).await {
-            Ok(songs) => songs.into_iter().map(|song| self.song(song)).collect(),
+            Ok(songs) => songs
+                .into_iter()
+                .filter(|song| seen.insert(song.id.clone()))
+                .map(|song| self.song(song))
+                .collect(),
             Err(_) => Vec::new(),
         };
         if top_tracks.is_empty()
