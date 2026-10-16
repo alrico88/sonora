@@ -23,6 +23,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Sonora now supports music from Subsonic servers and local files only.
 
+### Fixed
+
+- An artist's popular tracks on Subsonic no longer list the same song more than once.
+- Reopening an artist page now shows its Songs list again instead of only the popular tracks
+  and releases.
+
 ## [0.42.1] - 2026-10-02
 
 ### Added

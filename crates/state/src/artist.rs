@@ -140,6 +140,7 @@ impl ArtistDetail {
         };
         if let Some(artist) = catalog.peek_artist(id) {
             self.artist = Some(artist);
+            self.collect_songs(cx);
             cx.notify();
             return;
         }
