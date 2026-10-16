@@ -79,7 +79,10 @@ cargo fmt
 cargo check --workspace
 cargo test --workspace
 cargo clippy --workspace --all-targets
+scripts/macos/build-app.sh     # release build installed to /Applications/Sonora.app
 ```
+
+"Build for mac" (or "compila para mac") means `scripts/macos/build-app.sh`, not a dmg.
 
 The devShell has no `cargo` or `cargo-clippy`; those come from the system profile. The flake
 packages the released binary only, so `nix build` never sees the working tree.
