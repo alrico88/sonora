@@ -709,8 +709,8 @@ fn query_for(track: &Track, key: Option<TrackKey>) -> LyricsQuery {
     }
 }
 
-/// Asks every provider at once and sends each one's hits as they arrive. Returns the providers
-/// that replied, leaving out any that failed.
+/// Asks every provider at once and sends each one's hits for the queried track as they arrive.
+/// Returns the providers that replied, leaving out any that failed.
 async fn gather(
     providers: Vec<Arc<dyn LyricsProvider>>,
     query: LyricsQuery,
@@ -721,11 +721,13 @@ async fn gather(
         let query = query.clone();
         tasks.spawn(async move {
             let name = provider.name();
-            let found = provider
+            let mut found = provider
                 .search(&query)
                 .await
                 .inspect_err(|error| log::warn!("lyrics: {name} did not answer: {error:#}"))
                 .ok()?;
+            // Hits for another track are dropped here, before the lookup holds and caches them.
+            found.retain(|hit| music::lyrics::matched(&query, hit));
             Some((name, found))
         });
     }
