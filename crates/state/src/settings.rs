@@ -2598,6 +2598,7 @@ mod tests {
         assert!(loaded.sidebar_right_open);
         assert_eq!(loaded.pinned.len(), 1);
 
+        drop(store);
         fs::remove_file(path).expect("test database is removed");
         fs::remove_dir(root).expect("test directory is removed");
     }

@@ -28,6 +28,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An artist's popular tracks on Subsonic no longer list the same song more than once.
 - Reopening an artist page now shows its Songs list again instead of only the popular tracks
   and releases.
+- A song no longer gets stuck on plain lyrics because a lyrics source was down the first time
+  it played. Sources that failed are asked again on the next play, and turning a source off
+  no longer looks the song up again.
 
 ## [0.42.1] - 2026-10-02
 
