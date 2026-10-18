@@ -18,6 +18,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Opening one shows its albums and all of its songs, ready to play or shuffle.
 - On macOS, one setting now picks what closing the window does: stay in the Dock, where a click
   on the icon reopens it, hide in the menu bar, or quit. Staying in the Dock is the default.
+- Songs in your history show a heart when you hover them, so you can save one to your library
+  straight from there.
+- Ctrl and + or - make the text bigger or smaller, and Ctrl+0 puts it back to the default
+  size. On macOS it is Cmd. The size is saved just like the one in Settings.
 
 ### Changed
 
