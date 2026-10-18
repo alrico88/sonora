@@ -116,8 +116,8 @@ impl Store {
             .context("cannot prepare listening history read")?;
         let rows = query
             .query_map(params![scope, LOCAL_LIMIT], |row| {
-                let refs: String = row.get(5)?;
-                let artist_refs: Vec<ArtistRef> = serde_json::from_str(&refs).unwrap_or_default();
+                let refs = row.get_ref(5)?.as_str()?;
+                let artist_refs: Vec<ArtistRef> = serde_json::from_str(refs).unwrap_or_default();
                 let played_at: i64 = row.get(1)?;
                 let duration: i64 = row.get(9)?;
                 Ok(Track {
@@ -273,12 +273,14 @@ impl History {
                 this.task = None;
                 match loaded {
                     Ok(tracks) => {
-                        let mut pending = std::mem::take(&mut this.pending);
-                        pending.extend(tracks);
-                        let mut seen = HashSet::new();
-                        pending.retain(|track| seen.insert((track.id.clone(), track.added_at)));
-                        this.tracks = pending;
-                        this.tracks.truncate(LOCAL_LIMIT);
+                        let mut plays = std::mem::take(&mut this.pending);
+                        match plays.is_empty() {
+                            true => plays = tracks,
+                            false => plays.extend(tracks),
+                        }
+                        dedupe(&mut plays);
+                        plays.truncate(LOCAL_LIMIT);
+                        this.tracks = plays;
                         this.state = HistoryState::Ready;
                     }
                     Err(error) => {
@@ -361,4 +363,17 @@ fn now() -> i64 {
         .unwrap_or_default()
         .as_millis()
         .min(i64::MAX as u128) as i64
+}
+
+/// Drops every play after the first of the same track at the same time, keeping the order.
+fn dedupe(plays: &mut Vec<Track>) {
+    let first: Vec<bool> = {
+        let mut seen = HashSet::new();
+        plays
+            .iter()
+            .map(|track| seen.insert((track.id.as_deref(), track.added_at)))
+            .collect()
+    };
+    let mut first = first.into_iter();
+    plays.retain(|_| first.next().unwrap_or(true));
 }
