@@ -59,6 +59,7 @@ impl HistoryView {
                 cx,
             )
             .with_history(history.clone())
+            .with_liked(Sonora::global(cx).library.clone())
             .table(cx.weak_entity());
             TableState::new(TableDelegate::new(source, width, cx), cx).follow(scroll)
         });
@@ -75,6 +76,12 @@ impl HistoryView {
         })
         .detach();
         cx.observe(&playback, |this, _, cx| {
+            this.table.refresh(cx);
+            cx.notify();
+        })
+        .detach();
+        let library = Sonora::global(cx).library.clone();
+        cx.observe(&library, |this, _, cx| {
             this.table.refresh(cx);
             cx.notify();
         })
