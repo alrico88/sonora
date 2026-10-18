@@ -22,12 +22,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Sonora now supports music from Subsonic servers and local files only.
+- Sonora uses less memory and does less work while playing, showing lyrics and loading your
+  library, and it no longer frees memory in the background every few seconds to stay small.
 
 ### Fixed
 
 - An artist's popular tracks on Subsonic no longer list the same song more than once.
 - Reopening an artist page now shows its Songs list again instead of only the popular tracks
   and releases.
+- On Linux, Sonora no longer closes on its own after playing for a while.
 
 ## [0.42.1] - 2026-10-02
 
