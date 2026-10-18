@@ -28,6 +28,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An artist's popular tracks on Subsonic no longer list the same song more than once.
 - Reopening an artist page now shows its Songs list again instead of only the popular tracks
   and releases.
+- Seeking in the last few seconds of a song now moves within that song, instead of jumping into
+  the next one or doing nothing.
 
 ## [0.42.1] - 2026-10-02
 
