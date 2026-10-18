@@ -4,9 +4,9 @@ use gpui::prelude::*;
 
 use gpui::{
     Animation, AnimationExt as _, App, Bounds, Context, Div, DragMoveEvent, Entity, FontWeight,
-    MouseDownEvent, Pixels, Point, Render, ScrollHandle, ScrollStrategy, SharedString,
-    SpringConfig, SpringState, Task, UniformListScrollHandle, Window, div, ease_in_out, px,
-    relative, svg, uniform_list,
+    MouseDownEvent, MouseUpEvent, Pixels, Point, Render, ScrollHandle, ScrollStrategy,
+    SharedString, SpringConfig, SpringState, Task, UniformListScrollHandle, Window, div,
+    ease_in_out, px, relative, svg, uniform_list,
 };
 use i18n::t;
 use music::{Shape, Track, Voice};
@@ -509,6 +509,14 @@ impl Aside {
             }
         }
         cx.notify();
+    }
+
+    /// Lets go of whichever verse or break is held. Any left release in the window does it, so
+    /// the sheet listens once for every row rather than each row listening for its own.
+    fn release_verse(&mut self, cx: &mut Context<Self>) {
+        if let Some(spot) = self.held {
+            self.press_verse(spot, false, cx);
+        }
     }
 
     fn sweep_karaoke(&mut self, window: &Window, cx: &mut Context<Self>) {
@@ -1200,18 +1208,6 @@ impl Aside {
                                 this.press_verse(Warm::Break(index), true, cx)
                             }),
                         )
-                        .on_mouse_up(
-                            gpui::MouseButton::Left,
-                            cx.listener(move |this, _, _, cx| {
-                                this.press_verse(Warm::Break(index), false, cx)
-                            }),
-                        )
-                        .on_mouse_up_out(
-                            gpui::MouseButton::Left,
-                            cx.listener(move |this, _, _, cx| {
-                                this.press_verse(Warm::Break(index), false, cx)
-                            }),
-                        )
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.seek_verse(notes_row, instrumental_start, cx);
                         }))
@@ -1403,18 +1399,6 @@ impl Aside {
                                 this.press_verse(Warm::Verse(index), true, cx)
                             }),
                         )
-                        .on_mouse_up(
-                            gpui::MouseButton::Left,
-                            cx.listener(move |this, _, _, cx| {
-                                this.press_verse(Warm::Verse(index), false, cx)
-                            }),
-                        )
-                        .on_mouse_up_out(
-                            gpui::MouseButton::Left,
-                            cx.listener(move |this, _, _, cx| {
-                                this.press_verse(Warm::Verse(index), false, cx)
-                            }),
-                        )
                         .text_size(verse)
                         .line_height(active_verse_size(verse) * ui::LEADING)
                         .text_color(tint)
@@ -1522,6 +1506,17 @@ impl Aside {
 
         let sheet = Scroller::new("lyrics", &self.verse_bar)
             .when(lines.is_some(), Scroller::manual_presentation)
+            .when(lines.is_some(), |this| {
+                this.capture_any_mouse_up(cx.listener(|this, event: &MouseUpEvent, _, cx| {
+                    if event.button == gpui::MouseButton::Left {
+                        this.release_verse(cx);
+                    }
+                }))
+                .on_mouse_up_out(
+                    gpui::MouseButton::Left,
+                    cx.listener(|this, _, _, cx| this.release_verse(cx)),
+                )
+            })
             .flex()
             .flex_col()
             .items_center()
